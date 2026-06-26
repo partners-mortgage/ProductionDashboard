@@ -1905,11 +1905,33 @@ function creditedLO(owner, referredBy, productionAssistant){
   return own || 'Unknown LO';
 }
 
+// Reattribute stored loans: where loName is a non-producer, we can only fix it
+// if the loan still carries referrer info. Stored loans usually keep only loName,
+// so this mainly catches anything re-processed in-session. Re-uploading the source
+// file is the reliable fix because that file has the Referred By column.
+function reattributeStoredCredits(){
+  let fixed = 0;
+  const fixLoan = (l)=>{
+    if(l && isNonProducer(l.loName)){
+      const credited = creditedLO(l.loName, l.referredBy || l.refBy, l.productionAssistant || l.prodAsst);
+      if(credited && !isNonProducer(credited) && credited !== l.loName){
+        l.loName = credited; fixed++;
+      }
+    }
+  };
+  Object.values(currentData.monthlyProduction||{}).forEach(b=>{ (b.loans||[]).forEach(fixLoan); });
+  (currentData.ytdData||[]).forEach(fixLoan);
+  (currentData.pipeline||[]).forEach(fixLoan);
+  if(fixed>0){ rebuildYtdFromMonthly(); saveToLocalStorage(); }
+  return fixed;
+}
+
 function processRobustProductionData(json){
   return json.map(r=>({
     fundingDate:formatDate(r['Funded Date']),loanAmount:parseFloat((r['Loan Amount']||0).toString().replace(/[$,]/g,'')),
     loName:creditedLO(r['Owner'], r['Referred By (TL/OS)'], r['Production Assistant']),clientName:extractClientName(r['Topic']||'Unknown'),
     loanPurpose:r['Purpose of loan']||'Purchase',loanId:r['(Do Not Modify) Loan']||'',
+    owner:(r['Owner']||'').toString().trim(), referredBy:(r['Referred By (TL/OS)']||'').toString().trim(), productionAssistant:(r['Production Assistant']||'').toString().trim(),
     interestRate:parseFloat(r['Interest Rate']||0),lender:'Partners Mortgage'
   })).filter(l=>l.loanAmount>0&&l.fundingDate&&l.fundingDate.startsWith('2026')&&new Date(l.fundingDate)<=new Date());
 }
@@ -3086,6 +3108,12 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       loadHistoricalData();
     } catch(e) { console.error('Historical load error:', e); }
+    
+    // Reattribute any already-stored loans crediting David Arvidson / Rachael Gaines
+    try {
+      const fixed = reattributeStoredCredits();
+      if(fixed > 0) console.log('Reattributed credit on', fixed, 'stored loans');
+    } catch(e) { console.error('Credit reattribution error:', e); }
     
     // Log final state
     console.log('Boot data state:', {
