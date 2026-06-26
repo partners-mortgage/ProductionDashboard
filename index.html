@@ -17,47 +17,87 @@
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
 
 <style>
 /* ═══════════════════════════════════════════
    PARTNERS MORTGAGE — DESIGN SYSTEM
+   Brand palette (DREAMBOX): each color one job.
    ═══════════════════════════════════════════ */
 :root {
-  --teal: #00818D;
-  --teal-dark: #006B75;
-  --teal-light: #E8F4F5;
-  --teal-mid: #B2DDE1;
-  --warm: #8A7E78;
-  --warm-light: #B5ACA7;
-  --green: #22C55E;
-  --green-bg: #ECFDF5;
-  --red: #EF4444;
-  --red-bg: #FEF2F2;
-  --amber: #F59E0B;
-  --amber-bg: #FFFBEB;
-  --purple: #8B5CF6;
+  /* Brand palette — fixed hues, never reassigned */
+  --teal: #00818D;        /* primary · hero · purchase · primary bars */
+  --teal-dark: #006670;
+  --teal-deep: #004A52;
+  --amber: #FFAC27;       /* refinance · #1 badge · today highlights */
+  --gold: #F6CD80;        /* #3 badge · soft fills · chart tints */
+  --purple: #AD60BF;      /* standout / biggest mover */
+  --lime: #96C121;        /* positive · on-pace · upward moves */
+  --coral: #FB5058;       /* behind pace · downward · alerts */
+  --warm: #8A7E78;        /* neutral body/labels (light) */
 
-  --bg: #F7F8FA;
-  --card: #FFFFFF;
-  --border: #E8ECF1;
-  --border-light: #F1F4F8;
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-tertiary: #94A3B8;
-  --text-inverse: #FFFFFF;
+  /* Status aliases mapped onto brand */
+  --green: var(--lime);
+  --red: var(--coral);
 
   --sidebar-w: 240px;
   --header-h: 72px;
-  --radius: 10px;
-  --radius-sm: 6px;
-  --radius-lg: 14px;
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
-  --shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md: 0 4px 12px rgba(15,23,42,0.07);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
 
-  --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font: 'Manrope', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-serif: 'Lora', Georgia, serif;
+}
+
+/* ── DAYLIGHT (default) — warm editorial light ── */
+:root, [data-theme="daylight"] {
+  --bg: #FAF8F4;
+  --bg-warm: #F2EDE4;
+  --card: #FFFFFF;
+  --border: #ECE6DC;
+  --border-light: #F4EFE7;
+  --text-primary: #20242A;
+  --text-secondary: #5A5752;
+  --text-tertiary: #9A938A;
+  --text-inverse: #FFFFFF;
+  --hero-field: linear-gradient(135deg, #00818D 0%, #006670 100%);
+  --hero-text: #FFFFFF;
+  --shadow-sm: 0 1px 2px rgba(40,36,30,0.04);
+  --shadow: 0 2px 8px rgba(40,36,30,0.06);
+  --shadow-md: 0 8px 24px rgba(40,36,30,0.09);
+  --green-bg: #F2F8E2;
+  --red-bg: #FEF0F0;
+  --amber-bg: #FFF6E8;
+  --teal-light: #E4F1F2;
+  --chart-grid: rgba(40,36,30,0.06);
+  --chart-muted: #C9DEDF;
+}
+
+/* ── MIDNIGHT — dark command center for the TV wall ── */
+[data-theme="midnight"] {
+  --bg: #0A0E14;
+  --bg-warm: #0F141C;
+  --card: #131A24;
+  --border: #1F2935;
+  --border-light: #1A222E;
+  --text-primary: #F2F6FA;
+  --text-secondary: #9DAAB8;
+  --text-tertiary: #5E6B7A;
+  --text-inverse: #FFFFFF;
+  --hero-field: linear-gradient(135deg, #00A5B5 0%, #00818D 60%, #005A63 100%);
+  --hero-text: #FFFFFF;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow: 0 4px 16px rgba(0,0,0,0.4);
+  --shadow-md: 0 12px 36px rgba(0,0,0,0.55);
+  --green-bg: rgba(150,193,33,0.14);
+  --red-bg: rgba(251,80,88,0.14);
+  --amber-bg: rgba(255,172,39,0.14);
+  --teal-light: rgba(0,165,181,0.16);
+  --chart-grid: rgba(255,255,255,0.05);
+  --chart-muted: #2A3744;
+  --teal: #16B4C6;
+  --gold: #F6CD80;
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -68,6 +108,19 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* ── Load-only motion ── */
+@keyframes pm-rise { from { opacity:0; transform: translateY(10px);} to {opacity:1; transform:none;} }
+@keyframes pm-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes pm-pulse { 0%,100%{ opacity:1; transform:scale(1);} 50%{opacity:0.45; transform:scale(0.82);} }
+@keyframes pm-fade { from{opacity:0;} to{opacity:1;} }
+.pm-anim { animation: pm-rise 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+.live-dot { animation: pm-pulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pm-anim, .live-dot { animation: none !important; }
+  body { transition: none; }
 }
 
 /* ═══════════════════════════════════════════
@@ -266,13 +319,13 @@ body {
 }
 
 /* ═══════════════════════════════════════════
-   KPI CARDS
+   KPI — one hero number, supporting tiles
    ═══════════════════════════════════════════ */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: 1.6fr 1fr 1fr 1fr 1fr;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 .kpi-card {
   background: var(--card);
@@ -280,55 +333,116 @@ body {
   border-radius: var(--radius);
   padding: 18px 18px 16px;
   position: relative;
-  transition: box-shadow 0.2s;
+  transition: box-shadow 0.2s, transform 0.2s;
 }
-.kpi-card:hover { box-shadow: var(--shadow-md); }
-.kpi-card.featured {
-  background: linear-gradient(135deg, var(--teal) 0%, #009BA8 100%);
-  border-color: transparent;
-  color: var(--text-inverse);
-}
-.kpi-card.featured .kpi-label { color: rgba(255,255,255,0.8); }
-.kpi-card.featured .kpi-value { color: var(--text-inverse); }
-.kpi-card.featured .kpi-delta { color: rgba(255,255,255,0.85); }
-.kpi-card.featured .kpi-icon { background: rgba(255,255,255,0.18); color: var(--text-inverse); }
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
 
-.kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+/* HERO — the one number that matters */
+.kpi-card.featured {
+  background: var(--hero-field);
+  border-color: transparent;
+  color: var(--hero-text);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.kpi-card.featured .kpi-label { color: rgba(255,255,255,0.78); }
+.kpi-card.featured .kpi-value {
+  color: var(--hero-text);
+  font-size: 58px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  line-height: 0.98;
+  margin: 6px 0 8px;
+}
+.kpi-card.featured .kpi-delta { color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 600; }
+.kpi-card.featured .kpi-icon { background: rgba(255,255,255,0.16); color: var(--hero-text); }
+.kpi-card.featured .kpi-spark { position:absolute; right:0; bottom:0; width:55%; height:46px; opacity:0.5; pointer-events:none; }
+
+.kpi-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .kpi-label {
   font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 1.2px;
   color: var(--text-tertiary);
   text-transform: uppercase;
 }
 .kpi-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  width: 30px; height: 30px;
+  border-radius: 9px;
   background: var(--teal-light);
   color: var(--teal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
 .kpi-icon svg { width: 15px; height: 15px; }
 
 .kpi-value {
-  font-size: 26px;
+  font-size: 40px;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
+  letter-spacing: -1.2px;
+  line-height: 1.0;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
+  font-variant-numeric: tabular-nums;
 }
-.kpi-delta {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--green);
-}
-.kpi-delta.negative { color: var(--red); }
+.kpi-delta { font-size: 12px; font-weight: 600; color: var(--lime); }
+.kpi-delta.negative { color: var(--coral); }
 .kpi-delta.neutral { color: var(--text-tertiary); }
+
+/* MOMENTUM — one tinted card, plain-English story */
+.momentum-card {
+  background: var(--teal-light);
+  border: 1px solid color-mix(in srgb, var(--teal) 22%, transparent);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+}
+.momentum-icon {
+  width: 26px; height: 26px; flex-shrink:0;
+  border-radius: 7px;
+  background: var(--teal);
+  color: #fff;
+  display:flex; align-items:center; justify-content:center;
+}
+.momentum-icon svg { width:14px; height:14px; }
+.momentum-text {
+  font-size: 13.5px; color: var(--text-secondary); line-height:1.45;
+  flex: 1;
+}
+.momentum-text b { color: var(--text-primary); font-weight: 800; }
+.momentum-text .accent-up { color: var(--lime); font-weight: 800; }
+.momentum-text .accent-down { color: var(--coral); font-weight: 800; }
+.momentum-dots { display:flex; gap:5px; flex-shrink:0; }
+.momentum-dots i {
+  width:6px; height:6px; border-radius:50%; background: color-mix(in srgb, var(--teal) 30%, transparent);
+  transition: all 0.3s;
+}
+.momentum-dots i.on { background: var(--teal); width:16px; border-radius:3px; }
+
+/* Live status pill + theme toggle */
+.live-pill {
+  display:inline-flex; align-items:center; gap:7px;
+  padding:6px 13px; border-radius:999px;
+  background: var(--teal-light); color: var(--teal);
+  font-size:11.5px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+}
+.live-pill .live-dot { width:7px; height:7px; border-radius:50%; background: var(--lime); }
+.theme-toggle {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 13px; border-radius:999px; cursor:pointer;
+  background: var(--card); border:1px solid var(--border);
+  font-size:12px; font-weight:600; color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.theme-toggle:hover { border-color: var(--teal); color: var(--teal); }
+.theme-toggle svg { width:14px; height:14px; }
 
 /* ═══════════════════════════════════════════
    CHART CARDS
@@ -718,6 +832,10 @@ body {
           <span id="syncDot" style="width:8px;height:8px;border-radius:50%;background:#94A3B8;display:inline-block;"></span>
           Sync
         </button>
+        <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle" title="Switch theme">
+          <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <span id="themeLabel">TV Mode</span>
+        </button>
         <button class="btn-primary btn" onclick="showUploadModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           Upload Data
@@ -772,17 +890,25 @@ body {
           Sample data loaded — upload your Excel files for live production metrics
         </div>
 
-        <!-- KPI Row -->
+        <!-- Momentum line — rotating plain-English findings -->
+        <div class="momentum-card pm-anim" id="momentumCard" style="animation-delay:0.05s;">
+          <div class="momentum-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+          <div class="momentum-text" id="momentumText">Reading the month…</div>
+          <div class="momentum-dots" id="momentumDots"></div>
+        </div>
+
+        <!-- KPI Row: one hero number + 4 supporting -->
         <div class="kpi-row">
-          <div class="kpi-card featured">
+          <div class="kpi-card featured pm-anim">
             <div class="kpi-top">
               <div class="kpi-label" id="volumeLabel">MTD Volume</div>
               <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
             </div>
             <div class="kpi-value" id="ytdVolume">$0</div>
             <div class="kpi-delta" id="ytdVolumeDelta">Loading...</div>
+            <svg class="kpi-spark" id="heroSpark" viewBox="0 0 200 46" preserveAspectRatio="none"><path id="heroSparkPath" d="" fill="none" stroke="rgba(255,255,255,0.55)" stroke-width="2"/></svg>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card pm-anim" style="animation-delay:0.08s;">
             <div class="kpi-top">
               <div class="kpi-label" id="unitsLabel">MTD Units</div>
               <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
@@ -790,34 +916,27 @@ body {
             <div class="kpi-value" id="ytdUnits">0</div>
             <div class="kpi-delta" id="ytdUnitsDelta">—</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card pm-anim" style="animation-delay:0.14s;">
             <div class="kpi-top">
-              <div class="kpi-label">MTD Avg Size</div>
+              <div class="kpi-label">Avg Loan Size</div>
               <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
             </div>
             <div class="kpi-value" id="avgLoanSize">$0</div>
             <div class="kpi-delta" id="avgLoanSizeDelta">—</div>
           </div>
-          <div class="kpi-card">
+          <div class="kpi-card pm-anim" style="animation-delay:0.20s;">
             <div class="kpi-top">
               <div class="kpi-label">Today Volume</div>
-              <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+              <div class="kpi-icon" style="background:var(--amber-bg);color:var(--amber);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
             </div>
             <div class="kpi-value" id="todayVolume">$0</div>
             <div class="kpi-delta" id="todayVolumeDelta">—</div>
+            <span id="todayUnits" style="display:none;">0</span><span id="todayUnitsDelta" style="display:none;"></span>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-top">
-              <div class="kpi-label">Today Units</div>
-              <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-            </div>
-            <div class="kpi-value" id="todayUnits">0</div>
-            <div class="kpi-delta" id="todayUnitsDelta">—</div>
-          </div>
-          <div class="kpi-card">
+          <div class="kpi-card pm-anim" style="animation-delay:0.26s;">
             <div class="kpi-top">
               <div class="kpi-label">Goal Pacing</div>
-              <div class="kpi-icon" style="background:#ECFDF5;color:#22C55E;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+              <div class="kpi-icon" style="background:var(--green-bg);color:var(--lime);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
             </div>
             <div class="kpi-value" id="monthlyGoal">0%</div>
             <div class="kpi-delta neutral" id="monthlyGoalDelta">—</div>
@@ -1469,6 +1588,27 @@ async function loadFromCloud() {
 // UTILITIES
 // ═══════════════════════════════════════════
 const $ = id => document.getElementById(id);
+
+// ── Theme: Daylight (default) ⇄ Midnight (TV) ──
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('pm_theme', theme); } catch(e){}
+  const label=$('themeLabel'), icon=$('themeIcon');
+  if(label) label.textContent = theme==='midnight' ? 'Day Mode' : 'TV Mode';
+  if(icon) icon.innerHTML = theme==='midnight'
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  // recolor charts for the theme
+  if(typeof refreshAllCharts==='function') setTimeout(refreshAllCharts, 50);
+}
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'daylight';
+  applyTheme(cur==='midnight'?'daylight':'midnight');
+}
+(function initTheme(){
+  let t='daylight'; try { t=localStorage.getItem('pm_theme')||'daylight'; } catch(e){}
+  document.documentElement.setAttribute('data-theme', t);
+})();
 const fmtK = num => {
   if (num >= 1000000) return `$${(num/1000000).toFixed(1)}M`;
   if (num >= 1000) return `$${(num/1000).toFixed(0)}K`;
@@ -2560,6 +2700,90 @@ function updateKPIs(data){
   const period=currentData.filters.timePeriod;
   if(e('volumeLabel')) e('volumeLabel').textContent=period.includes('YTD')?'YTD Volume':period.includes('Q1')?'Q1 Volume':'MTD Volume';
   if(e('unitsLabel')) e('unitsLabel').textContent=period.includes('YTD')?'YTD Units':period.includes('Q1')?'Q1 Units':'MTD Units';
+
+  // Build rotating momentum findings + hero sparkline
+  computeMomentum(data, {vol, units, avg, pct, goal, todayVol, todayLoans});
+  drawHeroSparkline();
+}
+
+// ── Momentum: 3–5 rotating plain-English findings ──
+let MOMENTUM_FINDINGS = [];
+let _momentumIdx = 0, _momentumTimer = null;
+function computeMomentum(data, m){
+  const findings = [];
+  const purchaseVol = data.filter(l=>/purch/i.test(l.loanPurpose||'')).reduce((s,l)=>s+l.loanAmount,0);
+  const refiVol = m.vol - purchaseVol;
+  const purchasePct = m.vol>0 ? Math.round(purchaseVol/m.vol*100) : 0;
+
+  // 1) Pace vs goal
+  if(m.goal>0){
+    const now=new Date(); const dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+    const daysLeft=Math.max(0, dim-now.getDate());
+    if(m.pct>=100) findings.push(`Goal hit — <b>${fmtK(m.vol)}</b> funded, <span class="accent-up">${Math.round(m.pct)}%</span> of the <b>${fmtK(m.goal)}</b> target with <b>${daysLeft} days</b> to spare.`);
+    else findings.push(`Pacing <span class="${m.pct>=75?'accent-up':'accent-down'}">${Math.round(m.pct)}%</span> to goal — <b>${fmtK(m.vol)}</b> of <b>${fmtK(m.goal)}</b>, <b>${daysLeft} days</b> left.`);
+  }
+  // 2) Top performer / biggest LO
+  const byLo={};
+  data.forEach(l=>{ byLo[l.loName]=(byLo[l.loName]||0)+l.loanAmount; });
+  const ranked=Object.entries(byLo).sort((a,b)=>b[1]-a[1]);
+  if(ranked.length){
+    findings.push(`<b>${ranked[0][0]}</b> leads the board at <b>${fmtK(ranked[0][1])}</b> funded${ranked.length>1?` — ${fmtK(ranked[0][1]-ranked[1][1])} ahead of ${ranked[1][0]}`:''}.`);
+  }
+  // 3) Top mover (rank change vs prior month) — uses computeRankMovement if available
+  try {
+    const mover = topMover(data);
+    if(mover) findings.push(`<b>${mover.name}</b> is the biggest mover — up <span class="accent-up">${mover.up} ${mover.up===1?'spot':'spots'}</span> on the leaderboard this period.`);
+  } catch(e){}
+  // 4) Purchase mix
+  if(m.vol>0){
+    findings.push(`Mix is <b>${purchasePct}% purchase</b> (<b>${fmtK(purchaseVol)}</b>) to ${100-purchasePct}% refi (<b>${fmtK(refiVol)}</b>).`);
+  }
+  // 5) Today's funding
+  if(m.todayLoans && m.todayLoans.length){
+    findings.push(`<b>${m.todayLoans.length}</b> ${m.todayLoans.length===1?'loan':'loans'} funded today for <span class="accent-up">${fmtK(m.todayVol)}</span>.`);
+  }
+
+  MOMENTUM_FINDINGS = findings.slice(0,5);
+  _momentumIdx = 0;
+  renderMomentum();
+  if(_momentumTimer) clearInterval(_momentumTimer);
+  if(MOMENTUM_FINDINGS.length>1){
+    _momentumTimer = setInterval(()=>{ _momentumIdx=(_momentumIdx+1)%MOMENTUM_FINDINGS.length; renderMomentum(true); }, 5000);
+  }
+}
+function renderMomentum(fade){
+  const t=$('momentumText'), dots=$('momentumDots');
+  if(!t||!MOMENTUM_FINDINGS.length) return;
+  if(fade){ t.style.opacity='0'; setTimeout(()=>{ t.innerHTML=MOMENTUM_FINDINGS[_momentumIdx]; t.style.transition='opacity 0.4s'; t.style.opacity='1'; },200); }
+  else { t.innerHTML=MOMENTUM_FINDINGS[_momentumIdx]; }
+  if(dots) dots.innerHTML=MOMENTUM_FINDINGS.map((_,i)=>`<i class="${i===_momentumIdx?'on':''}"></i>`).join('');
+}
+// Rough "top mover": compares this period's rank to prior month's rank
+function topMover(data){
+  const period=currentData.filters.timePeriod;
+  // only meaningful for MTD — compare to previous month bucket
+  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const prevD=new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevM=`${prevD.getFullYear()}-${String(prevD.getMonth()+1).padStart(2,'0')}`;
+  const cur=currentData.monthlyProduction[curM], prev=currentData.monthlyProduction[prevM];
+  if(!cur||!prev||!cur.loans||!prev.loans) return null;
+  const rank=(loans)=>{ const t={}; loans.forEach(l=>{const n=resolveDisplayLo(l); t[n]=(t[n]||0)+l.loanAmount;}); return Object.entries(t).sort((a,b)=>b[1]-a[1]).map(x=>x[0]); };
+  const cr=rank(cur.loans), pr=rank(prev.loans);
+  let best=null;
+  cr.forEach((name,ci)=>{ const pi=pr.indexOf(name); if(pi>ci){ const up=pi-ci; if(!best||up>best.up) best={name,up}; } });
+  return best;
+}
+function resolveDisplayLo(l){ if(typeof isNonProducer==='function' && isNonProducer(l.loName)){ const c=resolveCredit(l); return c||l.loName; } return l.loName; }
+
+// Hero sparkline from monthly trend
+function drawHeroSparkline(){
+  const path=$('heroSparkPath'); if(!path) return;
+  const months=[]; const now=new Date();
+  for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
+  const vals=months.map(mk=>{ const b=currentData.monthlyProduction[mk]; return b&&b.loans?b.loans.reduce((s,l)=>s+l.loanAmount,0):0; });
+  const max=Math.max(...vals,1); const W=200,H=46;
+  const pts=vals.map((v,i)=>`${(i/(vals.length-1))*W},${H-(v/max)*(H-6)-3}`);
+  path.setAttribute('d', 'M'+pts.join(' L'));
 }
 
 function updatePipelineKPIs(pl){
@@ -3004,13 +3228,32 @@ function renderOwnerChart(pl) {
 // ═══════════════════════════════════════════
 // CHARTS
 // ═══════════════════════════════════════════
+function themeChartColors(){
+  const css=getComputedStyle(document.documentElement);
+  return {
+    grid: css.getPropertyValue('--chart-grid').trim() || '#F1F4F8',
+    tick: css.getPropertyValue('--text-tertiary').trim() || '#94A3B8'
+  };
+}
 const chartDefaults = {
   responsive:true, maintainAspectRatio:false,
   plugins:{ legend:{display:false} },
-  scales:{ x:{grid:{color:'#F1F4F8'},ticks:{font:{family:'Plus Jakarta Sans',size:11},color:'#94A3B8'}}, y:{grid:{color:'#F1F4F8'},ticks:{font:{family:'Plus Jakarta Sans',size:11},color:'#94A3B8',callback:v=>fmtK(v)},beginAtZero:true} }
+  scales:{
+    x:{ grid:{display:false}, ticks:{font:{family:'Manrope',size:11,weight:'600'}, color:()=>themeChartColors().tick} },
+    y:{ grid:{color:()=>themeChartColors().grid, drawBorder:false}, ticks:{font:{family:'Manrope',size:11}, color:()=>themeChartColors().tick, callback:v=>fmtK(v)}, beginAtZero:true }
+  }
 };
 
 function updateCharts(data){ updateMonthlyChart(data); updateActivityChart(data); updateProductionMix(data); }
+
+// Re-render all visible charts (used on theme switch so colors follow the theme)
+function refreshAllCharts(){
+  try {
+    const f = filterData(currentData.ytdData, currentData.filters);
+    updateCharts(f);
+    if(currentData.pipeline && currentData.pipeline.length) updatePipelineCharts(currentData.pipeline);
+  } catch(e) { console.warn('Chart refresh:', e.message); }
+}
 
 let _activityRange = 7;
 let _lastChartData = [];
@@ -3042,10 +3285,13 @@ function updateMonthlyChart(data){
   // Null out future months
   for(let i = currentMonth + 1; i < 12; i++) mo[i] = null;
   
-  // Color bars: current month teal, past months lighter
+  // Color bars: current month full teal, prior periods muted (per brief)
+  const css = getComputedStyle(document.documentElement);
+  const teal = css.getPropertyValue('--teal').trim() || '#00818D';
+  const muted = css.getPropertyValue('--chart-muted').trim() || 'rgba(0,129,141,0.45)';
   const bgColors = mo.map((v, i) => {
     if(v === null) return 'transparent';
-    return i === currentMonth ? '#00818D' : 'rgba(0,129,141,0.5)';
+    return i === currentMonth ? teal : muted;
   });
   
   currentData.charts.monthly = new Chart(ctx.getContext('2d'), {
@@ -3055,12 +3301,14 @@ function updateMonthlyChart(data){
       datasets: [{
         data: mo,
         backgroundColor: bgColors,
-        borderRadius: 6,
-        barPercentage: 0.55
+        borderRadius: 8,
+        borderSkipped: false,
+        barPercentage: 0.6
       }]
     },
     options: {
       ...chartDefaults,
+      animation: { duration: 800, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -3116,19 +3364,28 @@ function updateProductionMix(data) {
 
   const labels = Object.keys(mix);
   const counts = labels.map(l => mix[l].count);
-  const colors = ['#00818D', '#8A7E78', '#5B9BD5', '#ED7D31', '#548235'];
+  // Brand color encoding: Purchase = teal (always), Refinance = amber (always)
+  const css = getComputedStyle(document.documentElement);
+  const teal = css.getPropertyValue('--teal').trim() || '#00818D';
+  const amber = css.getPropertyValue('--amber').trim() || '#FFAC27';
+  const gold = css.getPropertyValue('--gold').trim() || '#F6CD80';
+  const purple = css.getPropertyValue('--purple').trim() || '#AD60BF';
+  const ringBorder = css.getPropertyValue('--card').trim() || '#fff';
+  const colorFor = (l) => l==='Purchase'?teal : l==='Refinance'?amber : l.toLowerCase().includes('refi')?amber : [gold,purple,teal][labels.indexOf(l)%3];
+  const colors = labels.map(colorFor);
 
   if(labels.length === 0) return;
 
   currentData.charts.prodMix = new Chart(ctx.getContext('2d'),{
     type:'doughnut',
-    data:{ labels, datasets:[{ data:counts, backgroundColor:colors.slice(0,labels.length), borderWidth:3, borderColor:'#fff' }] },
+    data:{ labels, datasets:[{ data:counts, backgroundColor:colors, borderWidth:3, borderColor:ringBorder }] },
     options:{
-      responsive:true, maintainAspectRatio:false, cutout:'58%',
+      responsive:true, maintainAspectRatio:false, cutout:'66%',
+      animation:{ animateRotate:true, duration:800 },
       plugins:{
-        legend:{ display:true, position:'bottom', labels:{ font:{family:'Plus Jakarta Sans',size:12,weight:'600'}, padding:14, boxWidth:14 } },
+        legend:{ display:true, position:'bottom', labels:{ font:{family:'Manrope',size:12,weight:'600'}, color:css.getPropertyValue('--text-secondary').trim(), padding:14, boxWidth:12, usePointStyle:true, pointStyle:'circle' } },
         tooltip:{
-          backgroundColor:'#0F172A', titleFont:{family:'Plus Jakarta Sans',size:13,weight:'700'}, bodyFont:{family:'Plus Jakarta Sans',size:12},
+          backgroundColor:'#0F172A', titleFont:{family:'Manrope',size:13,weight:'700'}, bodyFont:{family:'Manrope',size:12},
           padding:12, cornerRadius:8,
           callbacks:{
             label: (item) => {
@@ -3173,12 +3430,19 @@ function updateLeaderboard(data){
   }
   
   el.innerHTML=sorted.map(([name,d],i)=>{
-    const rankColors = i===0 ? 'background:#FEF3C7;color:#B45309;' : i===1 ? 'background:#F1F5F9;color:#475569;' : i===2 ? 'background:#FED7AA;color:#C2410C;' : 'background:var(--bg);color:var(--text-tertiary);';
-    return `<tr>
-      <td style="padding:8px 0;"><div style="width:24px;height:24px;border-radius:50%;${rankColors}font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
-      <td style="padding:8px 0;font-weight:600;">${name}</td>
-      <td style="padding:8px 0;text-align:right;color:var(--text-secondary);">${d.units}</td>
-      <td style="padding:8px 0;text-align:right;font-weight:600;">${fmtK(d.vol)}</td>
+    const maxVal = sorted[0][1][sortKey] || 1;
+    const barPct = Math.round((d[sortKey]/maxVal)*100);
+    // Brand rank badges: #1 amber, #2 warm-gray, #3 gold
+    const rankColors = i===0 ? 'background:var(--amber);color:#fff;' : i===1 ? 'background:var(--warm);color:#fff;' : i===2 ? 'background:var(--gold);color:#5A4A1F;' : 'background:var(--bg-warm);color:var(--text-tertiary);';
+    const rowBg = i===0 ? 'background:var(--teal-light);' : '';
+    return `<tr style="${rowBg}">
+      <td style="padding:9px 6px 9px 8px;"><div style="width:24px;height:24px;border-radius:50%;${rankColors}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
+      <td style="padding:9px 0;font-weight:${i===0?'800':'600'};">
+        <div>${name}</div>
+        <div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden;"><div style="height:100%;width:${barPct}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div>
+      </td>
+      <td style="padding:9px 8px 9px 0;text-align:right;color:var(--text-secondary);vertical-align:top;">${d.units}</td>
+      <td style="padding:9px 0;text-align:right;font-weight:700;vertical-align:top;">${fmtK(d.vol)}</td>
     </tr>`;
   }).join('');
 }
@@ -3256,6 +3520,8 @@ document.addEventListener('DOMContentLoaded',function(){
     // Wait for Firebase SDK (up to 3 seconds, then proceed without it)
     if(typeof firebase==='undefined' && bootAttempts < 30){setTimeout(boot,100);return;}
     if(typeof firebase==='undefined') console.warn('Firebase SDK did not load — proceeding offline');
+    // Sync theme toggle label to the active theme
+    applyTheme(document.documentElement.getAttribute('data-theme')||'daylight');
     
     // Load saved data from localStorage
     try{
