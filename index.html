@@ -1884,10 +1884,31 @@ async function processExcelFile(file) {
   });
 }
 
+// ── Loan credit attribution ──
+// David Arvidson and Rachael Gaines are never credited as the producer.
+// When either is the Owner, credit the person in "Referred By", then fall back
+// to the next obvious column. Spelling-tolerant matching.
+const NON_PRODUCERS = ['david arvidson','rachael gaines','raechel gaines','david arbinson','rachel gaines'];
+function isNonProducer(name){
+  if(!name) return false;
+  return NON_PRODUCERS.includes(String(name).trim().toLowerCase());
+}
+function creditedLO(owner, referredBy, productionAssistant){
+  const own = (owner||'').toString().trim();
+  if(!isNonProducer(own)) return own || 'Unknown LO';
+  // Owner is a non-producer — find someone else
+  const ref = (referredBy||'').toString().trim();
+  if(ref && !isNonProducer(ref)) return ref;
+  const pa = (productionAssistant||'').toString().trim();
+  if(pa && !isNonProducer(pa)) return pa;
+  // Nothing usable — keep the owner rather than inventing a name, but flag it
+  return own || 'Unknown LO';
+}
+
 function processRobustProductionData(json){
   return json.map(r=>({
     fundingDate:formatDate(r['Funded Date']),loanAmount:parseFloat((r['Loan Amount']||0).toString().replace(/[$,]/g,'')),
-    loName:(r['Owner']||'Unknown LO').trim(),clientName:extractClientName(r['Topic']||'Unknown'),
+    loName:creditedLO(r['Owner'], r['Referred By (TL/OS)'], r['Production Assistant']),clientName:extractClientName(r['Topic']||'Unknown'),
     loanPurpose:r['Purpose of loan']||'Purchase',loanId:r['(Do Not Modify) Loan']||'',
     interestRate:parseFloat(r['Interest Rate']||0),lender:'Partners Mortgage'
   })).filter(l=>l.loanAmount>0&&l.fundingDate&&l.fundingDate.startsWith('2026')&&new Date(l.fundingDate)<=new Date());
@@ -1995,7 +2016,7 @@ function processRobustPipelineData(json){
       loanId:r['(Do Not Modify) Loan']||'',
       applicationDate:formatDate(findCol(r, 'created on', 'application date', 'app date')),
       loanAmount:parseFloat((findCol(r, 'loan amount', 'total loan', 'amount')||0).toString().replace(/[$,]/g,'')),
-      loName:(findCol(r, 'referred by', 'owner', 'loan officer', 'lo name')||'Unknown LO').toString().trim(),
+      loName:creditedLO(findCol(r,'owner','loan officer','lo name'), findCol(r,'referred by'), findCol(r,'production assistant')),
       clientName:extractClientName((findCol(r, 'topic', 'borrower', 'client', 'contact')||'Unknown').toString()),
       loanPurpose:(findCol(r, 'purpose of loan', 'loan purpose', 'purpose')||'Purchase').toString(),
       lender:(findCol(r, 'lender', 'investor')||'Partners Mortgage').toString(),
@@ -2376,6 +2397,11 @@ const defaultColors = ['#5B9BD5','#ED7D31','#A5A5A5','#FFC000','#4472C4','#70AD4
 // SCREENSHOT STATUS IMPORT (uses Claude Vision API)
 // ═══════════════════════════════════════════
 // API key stored in browser only — never in source code
+// ── Model used for CRM screenshot extraction ──
+// If this ever errors with "model not found", update this string to a current model.
+// Current model strings are listed at https://docs.claude.com/en/docs/about-claude/models
+const VISION_MODEL = 'claude-sonnet-4-6';
+
 function getAnthropicKey() {
   return localStorage.getItem('anthropicApiKey') || '';
 }
@@ -2470,7 +2496,7 @@ async function handleStatusScreenshot(event) {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: VISION_MODEL,
         max_tokens: 1000,
         messages: [{
           role: 'user',
