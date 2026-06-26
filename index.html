@@ -2126,8 +2126,11 @@ function checkExecutivePin(e) { if(e.key==='Enter') verifyExecutivePin(); }
 function verifyExecutivePin() {
   if($('executivePinInput').value===EXECUTIVE_PIN){
     closeModal('executivePinModal');
+    window._adminUnlocked = true;  // unlock credit-assignment prompts for this session
     showGoalEditPanel();
     showToast('Executive access granted');
+    // Surface any credit/Leif assignments that were waiting for an admin
+    setTimeout(()=>{ try{ if(Object.keys(PENDING_CREDIT).length) showCreditPrompt(); }catch(e){} try{ if(Object.values(LEIF_PENDING).some(p=>!currentData.leifDecisions[p.key])) showLeifPrompt(); }catch(e){} }, 400);
   } else showToast('Incorrect PIN',true);
 }
 
@@ -2211,6 +2214,7 @@ function knownLOList(){
 }
 
 function showCreditPrompt(){
+  if(!window._adminUnlocked) return; // credit reassignment is admin-only (exec PIN)
   const pending = Object.entries(PENDING_CREDIT);
   if(pending.length === 0) return;
   if(document.getElementById('creditModal')) return; // already open
@@ -2296,6 +2300,7 @@ async function saveCreditAssignments(){
 
 // ── Leif Potter referral confirmation prompt ──
 function showLeifPrompt(){
+  if(!window._adminUnlocked) return; // credit reassignment is admin-only (exec PIN)
   const pending = Object.values(LEIF_PENDING).filter(p => !currentData.leifDecisions[p.key]);
   if(pending.length === 0) return;
   if(document.getElementById('leifModal')) return;
@@ -2544,7 +2549,7 @@ function applyLeifRule(l){
   return 'Leif Potter'; // default until confirmed
 }
 let _leifPromptTimer=null;
-function scheduleLeifPrompt(){ if(_leifPromptTimer) return; _leifPromptTimer=setTimeout(()=>{ _leifPromptTimer=null; showLeifPrompt(); }, 700); }
+function scheduleLeifPrompt(){ if(!window._adminUnlocked) return; if(_leifPromptTimer) return; _leifPromptTimer=setTimeout(()=>{ _leifPromptTimer=null; showLeifPrompt(); }, 700); }
 
 // Embedded correction map for David Arvidson / Rachael Gaines loans → correct producer.
 // Keyed by loan-ID prefix and by client surname, so it fixes already-stored loans
@@ -3091,6 +3096,7 @@ function filterData(data, filters){
 const PENDING_CREDIT = {};
 let _creditPromptTimer = null;
 function scheduleCreditPrompt(){
+  if(!window._adminUnlocked) return; // only an authenticated admin sees the prompt
   if(_creditPromptTimer) return;
   _creditPromptTimer = setTimeout(()=>{ _creditPromptTimer=null; showCreditPrompt(); }, 600);
 }
