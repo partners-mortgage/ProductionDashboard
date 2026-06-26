@@ -1905,18 +1905,34 @@ function creditedLO(owner, referredBy, productionAssistant){
   return own || 'Unknown LO';
 }
 
-// Reattribute stored loans: where loName is a non-producer, we can only fix it
-// if the loan still carries referrer info. Stored loans usually keep only loName,
-// so this mainly catches anything re-processed in-session. Re-uploading the source
-// file is the reliable fix because that file has the Referred By column.
+// Embedded correction map for David Arvidson / Rachael Gaines loans → correct producer.
+// Keyed by loan-ID prefix and by client surname, so it fixes already-stored loans
+// even though they no longer carry the original Referred By column.
+const CREDIT_FIX = {
+  p: {"9642802e-61":"Matthew Von Bergen","c8ac794c-b3":"Sean McDonough","04e09ac8-51":"Jason Malmstrom","7af520c5-bb":"Leif Potter","a048fc09-d8":"Rusty Mendoza","4f48b2b6-b6":"Craig Warn","7e2c06e3-a5":"Sean McDonough","cbc7bdb0-c2":"Matthew Von Bergen","713dce8e-66":"Sean McDonough","ac700eab-b8":"Matthew Von Bergen","574e223a-af":"Greg Choinski","c8e7fb38-6d":"Matthew Von Bergen","6b6be7ab-1e":"Leif Potter","96aac621-30":"Jay Kiel","9cec5144-41":"Leif Potter","0a319177-9a":"Sean McDonough","8efeb83e-06":"Greg Choinski","5cfdd90c-04":"Bobby Afrasiabi","dcc6f771-ca":"Kathleen Martiniello"},
+  c: {"salazar":"Matthew Von Bergen","cavoli":"Sean McDonough","morales":"Jason Malmstrom","timlet":"Leif Potter","schuh":"Rusty Mendoza","smith":"Craig Warn","mariano ramirez":"Sean McDonough","kitcher":"Matthew Von Bergen","marfo":"Sean McDonough","meder":"Matthew Von Bergen","devito":"Greg Choinski","frankel":"Leif Potter","gagnon":"Jay Kiel","wyatt":"Leif Potter","rosario":"Sean McDonough","wurch":"Greg Choinski","drury":"Bobby Afrasiabi","mitchell":"Kathleen Martiniello"}
+};
+
 function reattributeStoredCredits(){
   let fixed = 0;
   const fixLoan = (l)=>{
-    if(l && isNonProducer(l.loName)){
-      const credited = creditedLO(l.loName, l.referredBy || l.refBy, l.productionAssistant || l.prodAsst);
-      if(credited && !isNonProducer(credited) && credited !== l.loName){
-        l.loName = credited; fixed++;
-      }
+    if(!l || !isNonProducer(l.loName)) return;
+    let credited = null;
+    // 1) try live referrer fields if present
+    if(l.referredBy && !isNonProducer(l.referredBy)) credited = l.referredBy.toString().trim();
+    else if(l.productionAssistant && !isNonProducer(l.productionAssistant)) credited = l.productionAssistant.toString().trim();
+    // 2) try embedded fix by loan-ID prefix
+    if(!credited && l.loanId){
+      const pref = String(l.loanId).slice(0,11);
+      if(CREDIT_FIX.p[pref]) credited = CREDIT_FIX.p[pref];
+    }
+    // 3) try embedded fix by client surname
+    if(!credited && l.clientName){
+      const key = String(l.clientName).trim().toLowerCase();
+      if(CREDIT_FIX.c[key]) credited = CREDIT_FIX.c[key];
+    }
+    if(credited && !isNonProducer(credited) && credited !== l.loName){
+      l.loName = credited; fixed++;
     }
   };
   Object.values(currentData.monthlyProduction||{}).forEach(b=>{ (b.loans||[]).forEach(fixLoan); });
@@ -3147,7 +3163,10 @@ document.addEventListener('DOMContentLoaded',function(){
     // Load from Firestore FIRST — merge cloud data, then push only if local has more
     initFirebase();
     loadFromCloud().then(cloudUpdated => {
-      if(cloudUpdated) {
+      // Always reattribute after cloud load — cloud may carry old David/Rachael credits
+      let creditFixed = 0;
+      try { creditFixed = reattributeStoredCredits(); if(creditFixed>0) console.log('Reattributed credit on', creditFixed, 'loans after cloud load'); } catch(e){ console.error(e); }
+      if(cloudUpdated || creditFixed > 0) {
         let f = filterData(currentData.ytdData, currentData.filters);
         if(f.length === 0 && currentData.ytdData.length > 0 && currentData.filters.timePeriod.includes('MTD')) {
           currentData.filters.timePeriod = 'YTD_2026';
@@ -3158,7 +3177,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if(currentData.pipeline.length > 0) updatePipelineKPIs(currentData.pipeline);
         showToast(`Synced from cloud — ${currentData.ytdData.length} YTD loans`);
         updateSyncDot('green','Connected — synced');
-        // Save merged result back
+        // Save merged + credit-corrected result back so the fix persists for everyone
         saveToCloud();
       } else {
         // Cloud had nothing new — push our local data if we have any
