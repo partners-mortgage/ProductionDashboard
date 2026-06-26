@@ -827,6 +827,142 @@ nav.mobile-tabs {
   /* ── Mobile bottom tab bar ── */
   nav.mobile-tabs { display: flex; }
 }
+/* ═══════════════════════════════════════════
+   MODULAR TV MODE — full-screen glossy presentation
+   ═══════════════════════════════════════════ */
+.tvm-overlay {
+  display: none;
+  position: fixed; inset: 0; z-index: 9000;
+  color: #fff;
+  font-family: var(--font);
+  overflow: hidden;
+}
+.tvm-bg {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(1200px 800px at 18% 12%, rgba(0,129,141,0.35), transparent 60%),
+    radial-gradient(1000px 700px at 85% 90%, rgba(255,172,39,0.20), transparent 55%),
+    radial-gradient(900px 700px at 80% 10%, rgba(173,96,191,0.16), transparent 55%),
+    linear-gradient(160deg, #0a1119 0%, #0f1b27 50%, #0a141d 100%);
+}
+.tvm-bg::after {
+  content:''; position:absolute; inset:0;
+  background-image: radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.tvm-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 9vh 4vw 8vh; }
+.tvm-enter { animation: tvm-scene-in 0.7s cubic-bezier(0.22,1,0.36,1) both; }
+.tvm-leave { animation: tvm-scene-out 0.42s ease both; }
+@keyframes tvm-scene-in { from{ opacity:0; transform: scale(0.985); } to{ opacity:1; transform:none; } }
+@keyframes tvm-scene-out { from{ opacity:1; } to{ opacity:0; transform: scale(1.01); } }
+
+.tvm-scene { width: 100%; max-width: 1700px; }
+.tvm-eyebrow {
+  font-size: clamp(13px,1.4vw,22px); font-weight: 700; letter-spacing: 3px; text-transform: uppercase;
+  color: rgba(255,255,255,0.55); margin-bottom: 1.4vh;
+  animation: tvm-rise 0.6s cubic-bezier(0.22,1,0.36,1) both;
+}
+.tvm-headline {
+  font-family: 'Lora', serif; font-size: clamp(34px,4.6vw,72px); font-weight: 700;
+  margin-bottom: 2.4vh; animation: tvm-rise 0.6s 0.08s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes tvm-rise { from{ opacity:0; transform: translateY(22px);} to{opacity:1; transform:none;} }
+
+/* Bento grid for stat scenes: hero spans tall-left, three tiles on the right */
+.tvm-grid-prod {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: clamp(14px,1.6vw,26px);
+}
+.tvm-grid-prod .tvm-eyebrow { grid-column: 1 / -1; }
+.tvm-grid-prod .tvm-hero { grid-row: span 2; }
+
+.tvm-tile {
+  position: relative;
+  background: linear-gradient(150deg, rgba(255,255,255,0.085), rgba(255,255,255,0.025));
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 26px;
+  padding: clamp(20px,2.4vw,40px);
+  display: flex; flex-direction: column; justify-content: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.12);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  animation: tvm-tile-in 0.7s cubic-bezier(0.22,1,0.36,1) both;
+}
+.tvm-tile::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:50%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), transparent);
+  pointer-events:none;
+}
+.tvm-hero {
+  background: linear-gradient(150deg, rgba(0,129,141,0.55), rgba(0,129,141,0.18));
+  border-color: rgba(255,255,255,0.16);
+}
+@keyframes tvm-tile-in { from{ opacity:0; transform: translateY(30px) scale(0.97);} to{opacity:1; transform:none;} }
+.tvm-tile-label {
+  font-size: clamp(13px,1.25vw,22px); font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(255,255,255,0.62); margin-bottom: 0.8vh;
+}
+.tvm-tile-value { font-weight: 800; line-height: 0.98; letter-spacing: -2px; font-variant-numeric: tabular-nums; white-space: nowrap; max-width: 100%; }
+.tvm-tile-sub { font-size: clamp(14px,1.35vw,24px); font-weight: 700; margin-top: 1vh; }
+
+/* Leaderboard scene */
+.tvm-rank-scene { display: flex; flex-direction: column; align-items: center; }
+.tvm-rank-scene .tvm-eyebrow { text-align: center; padding-left: 0; }
+.tvm-rank-scene .tvm-headline { text-align: center; }
+.tvm-podium { display: grid; grid-template-columns: repeat(3,1fr); gap: clamp(16px,2vw,34px); align-items: end; width: 100%; }
+.tvm-podium-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; animation: tvm-rise 0.7s both; }
+.tvm-podium-name { font-size: clamp(15px,1.6vw,28px); font-weight: 800; margin-bottom: 0.5vh; text-align:center; }
+.tvm-trophy { filter: drop-shadow(0 2px 6px rgba(255,172,39,0.5)); }
+.tvm-podium-val { font-size: clamp(20px,2.4vw,42px); font-weight: 800; margin-bottom: 0.8vh; }
+/* Fixed-height track gives the bars a stable container so height:% is truly proportional */
+.tvm-podium-track { width: 100%; height: 30vh; display: flex; align-items: flex-end; }
+.tvm-podium-bar {
+  width: 100%; border-radius: 22px 22px 0 0; position: relative; min-height: 30px; flex-shrink: 0;
+  display:flex; align-items:flex-start; justify-content:center; padding-top: 1.2vh;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.25), 0 -8px 40px rgba(0,0,0,0.2);
+  transform-origin: bottom; animation: tvm-grow-bar 0.8s 0.2s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes tvm-grow-bar { from{ transform: scaleY(0);} to{ transform: scaleY(1);} }
+.tvm-podium-bar span { font-size: clamp(20px,2.2vw,40px); font-weight: 900; color: rgba(0,0,0,0.38); }
+.tvm-podium-units { font-size: clamp(12px,1.1vw,18px); color: rgba(255,255,255,0.6); margin-top: 0.8vh; font-weight:600; }
+/* More producers: responsive two-column grid of glossy rows with mini bars */
+.tvm-rank-grid {
+  margin-top: 2.4vh; width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.9vh clamp(16px,2vw,30px);
+}
+.tvm-rank-row { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius: 13px; padding: 1vh 18px; animation: tvm-rise 0.5s both; }
+.tvm-rank-n { font-weight:800; color: var(--amber); width: 26px; font-size: clamp(14px,1.3vw,22px); flex-shrink:0; }
+.tvm-rank-name { font-weight:700; font-size: clamp(14px,1.25vw,22px); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:0 0 36%; }
+.tvm-rank-bar { flex:1; height:8px; border-radius:5px; background: rgba(255,255,255,0.1); overflow:hidden; }
+.tvm-rank-bar span { display:block; height:100%; background: linear-gradient(90deg,var(--teal),var(--amber)); border-radius:5px; }
+.tvm-rank-val { font-weight:800; font-size: clamp(14px,1.25vw,22px); flex-shrink:0; text-align:right; min-width:74px; }
+
+/* Full-bleed break-room slide */
+.tvm-slide { position:absolute; inset:0; background:#000; display:flex; align-items:center; justify-content:center; }
+.tvm-slide-img { width:100%; height:100%; object-fit:contain; animation: tvm-kenburns 30s ease-out both; }
+@keyframes tvm-kenburns { from{ transform: scale(1.04);} to{ transform: scale(1.12);} }
+
+/* Chrome: brand, clock, progress, dots */
+.tvm-chrome { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; justify-content:space-between; padding: 3vh 3.5vw 0; z-index:2; }
+.tvm-brand { display:flex; align-items:center; gap:14px; }
+.tvm-brand-name { font-size: clamp(16px,1.5vw,26px); font-weight:800; letter-spacing:1px; }
+.tvm-brand-sub { font-size: clamp(10px,0.9vw,15px); font-weight:700; letter-spacing:2.5px; color: var(--amber); }
+.tvm-meta { display:flex; align-items:center; gap:18px; font-size: clamp(13px,1.2vw,20px); color: rgba(255,255,255,0.7); font-weight:600; }
+.tvm-exit { background: var(--amber); border:1px solid rgba(255,255,255,0.25); color:#3a2e10; border-radius:12px; padding:12px 22px; font-size: clamp(15px,1.2vw,20px); font-weight:800; cursor:pointer; font-family:var(--font); box-shadow:0 6px 20px rgba(0,0,0,0.3); transition: transform 0.15s, filter 0.15s; }
+.tvm-exit:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.tvm-exithint { position:absolute; bottom: 6.5vh; left:0; right:0; text-align:center; z-index:2; font-size: clamp(12px,1vw,16px); font-weight:600; color: rgba(255,255,255,0.45); letter-spacing:0.5px; pointer-events:none; animation: tvm-hintpulse 3s ease-in-out infinite; }
+@keyframes tvm-hintpulse { 0%,100%{ opacity:0.35; } 50%{ opacity:0.7; } }
+.tvm-progress { position:absolute; top:0; left:0; right:0; height:4px; background: rgba(255,255,255,0.08); z-index:3; }
+.tvm-progress-fill { height:100%; width:0; background: linear-gradient(90deg, var(--teal), var(--amber)); box-shadow: 0 0 12px var(--amber); }
+.tvm-dots { position:absolute; bottom: 3vh; left:0; right:0; display:flex; justify-content:center; gap:10px; z-index:2; }
+.tvm-dot { width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.22); transition: all 0.3s; }
+.tvm-dot.on { background: var(--amber); width:28px; border-radius:5px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tvm-enter, .tvm-leave, .tvm-tile, .tvm-eyebrow, .tvm-headline, .tvm-podium-col, .tvm-podium-bar, .tvm-rank-row, .tvm-slide-img { animation: none !important; }
+}
 </style>
 </head>
 
@@ -911,7 +1047,7 @@ nav.mobile-tabs {
           <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <span id="themeLabel">TV Mode</span>
         </button>
-        <button class="theme-toggle" onclick="toggleTvCycle()" id="tvCycleBtn" title="Auto-rotate pages every 30s — great for a wall TV">
+        <button class="theme-toggle" onclick="openTvChooser()" id="tvCycleBtn" title="Start a TV cycle — full pages or modular big-tile mode">
           <svg id="tvCycleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           <span id="tvCycleLabel">TV Cycle</span>
         </button>
@@ -1581,6 +1717,41 @@ nav.mobile-tabs {
           </div>
         </div>
 
+        <!-- Divider -->
+        <div style="border-top:1px solid var(--border);margin:28px 0;"></div>
+
+        <!-- Section 4: Break-Room TV Slides -->
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--amber);color:#5A4A1F;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;">4</div>
+            <div>
+              <div style="font-size:15px;font-weight:700;color:var(--text-primary);">Break-Room TV Slides</div>
+              <div style="font-size:12px;color:var(--text-tertiary);">Full-screen slides (birthdays, celebrations, announcements) shown in <b>Modular TV mode</b>. Upload glossy JPEG/PNG images — they display full-screen for 30 seconds each in the rotation.</div>
+            </div>
+          </div>
+
+          <div class="upload-zone" id="tvSlideDropZone" style="border-color:var(--amber);">
+            <div>
+              <div class="upload-zone-icon" style="color:var(--amber);">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              </div>
+              <h3>Add a Break-Room Slide</h3>
+              <p>Drop an image here, or click to choose. Landscape (16:9) looks best on the TV.</p>
+              <button class="upload-choose-btn" style="background:var(--amber);color:#5A4A1F;" onclick="event.stopPropagation();document.getElementById('tvSlideInput').click();">Choose Image</button>
+              <input type="file" id="tvSlideInput" accept=".png,.jpg,.jpeg,.webp" multiple style="display:none;" onchange="handleTvSlideUpload(event)">
+              <p style="margin-top:10px;font-size:11.5px;color:var(--text-tertiary);">Images are auto-resized for the TV. Keep it to a handful of active slides at a time.</p>
+            </div>
+          </div>
+
+          <div class="files-card" style="margin-top:14px;">
+            <div class="files-card-header">
+              <h3>Current Slides <span id="tvSlideCount" style="color:var(--text-tertiary);font-weight:600;"></span></h3>
+            </div>
+            <div id="tvSlideList" style="padding:6px;">
+              <p style="color:var(--text-tertiary);font-size:13px;padding:12px;">No slides yet — add a birthday or celebration image above.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -1817,6 +1988,31 @@ async function manualSync() {
 }
 
 // Save to Firestore + localStorage
+// ── Break-room TV slides: stored in a SEPARATE Firestore doc to avoid bloating main state ──
+async function saveTvSlidesToCloud(){
+  try { localStorage.setItem('pm_tvSlides', JSON.stringify(currentData.tvSlides||[])); } catch(e){ console.warn('local tvSlides save failed (quota?)', e); }
+  if(!db) initFirebase();
+  if(!db) return;
+  try {
+    await db.collection('dashboard').doc('tvslides').set({
+      slides: JSON.stringify(currentData.tvSlides||[]),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    console.log('☁️ TV slides saved');
+  } catch(e){ console.warn('⚠️ TV slides save failed:', e.message); }
+}
+async function loadTvSlidesFromCloud(){
+  if(!db) initFirebase();
+  if(!db) return;
+  try {
+    const doc = await db.collection('dashboard').doc('tvslides').get();
+    if(doc.exists){
+      const s = JSON.parse(doc.data().slides || '[]');
+      if(Array.isArray(s)){ currentData.tvSlides = s; try{ localStorage.setItem('pm_tvSlides', JSON.stringify(s)); }catch(e){} }
+    }
+  } catch(e){ console.warn('TV slides load failed:', e.message); }
+}
+
 async function saveToCloud() {
   // Always save to localStorage first (fast)
   saveToLocalStorage();
@@ -1935,64 +2131,367 @@ function toggleTheme(){
 }
 
 // ═══════════════════════════════════════════
-// TV MODE CYCLE — auto-rotate overview pages for a wall display
+// TV MODE CYCLE — two modes: Complete (full pages) and Modular (big glossy tiles)
 // ═══════════════════════════════════════════
 const TV_CYCLE_VIEWS = ['dashboard','pipeline','leads','analytics','leaderboards'];
 const TV_CYCLE_SECONDS = 30;
-let _tvCycleTimer = null, _tvCycleProgress = null, _tvCycleIdx = 0;
+let _tvCycleTimer = null, _tvCycleIdx = 0;
 
-function toggleTvCycle(){
-  if(_tvCycleTimer) stopTvCycle(true);
-  else startTvCycle();
+// ── Chooser ──
+function openTvChooser(){
+  if(_tvCycleTimer || _tvModular.active){ stopAllTvCycles(); return; } // running → stop
+  const m=document.createElement('div');
+  m.id='tvChooser';
+  m.style.cssText='position:fixed;inset:0;z-index:10001;background:rgba(15,23,33,0.55);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px;';
+  m.innerHTML=`<div style="background:var(--card);border-radius:20px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.35);">
+    <div style="padding:24px 28px 8px;"><div style="font-size:20px;font-weight:800;">Start TV Cycle</div>
+      <div style="font-size:13.5px;color:var(--text-secondary);margin-top:3px;">Pick how the wall display rotates. Both spend 30 seconds per screen. Click TV Cycle again to stop.</div></div>
+    <div style="padding:16px 28px 28px;display:grid;gap:12px;">
+      <button onclick="closeTvChooser();startCompleteCycle();" style="text-align:left;border:1px solid var(--border);background:var(--bg-warm);border-radius:14px;padding:16px 18px;cursor:pointer;display:flex;gap:14px;align-items:center;font-family:var(--font);">
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--teal-light);color:var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+        <div><div style="font-weight:800;font-size:15px;color:var(--text-primary);">Complete Cycle</div><div style="font-size:12.5px;color:var(--text-tertiary);">Every full page in turn — for walking up and studying the detail.</div></div>
+      </button>
+      <button onclick="closeTvChooser();startModularCycle();" style="text-align:left;border:1px solid var(--teal);background:linear-gradient(135deg,var(--teal-light),transparent);border-radius:14px;padding:16px 18px;cursor:pointer;display:flex;gap:14px;align-items:center;font-family:var(--font);">
+        <div style="width:46px;height:46px;border-radius:12px;background:var(--amber);color:#5A4A1F;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="7" cy="7" r="3.5"/><circle cx="17.5" cy="8" r="2.5"/><rect x="4" y="13.5" width="8" height="6.5" rx="2"/><rect x="14.5" y="13" width="5.5" height="7" rx="2"/></svg></div>
+        <div><div style="font-weight:800;font-size:15px;color:var(--text-primary);">Modular Cycle <span style="font-size:10.5px;background:var(--amber);color:#5A4A1F;padding:1px 7px;border-radius:8px;margin-left:4px;vertical-align:middle;">NEW</span></div><div style="font-size:12.5px;color:var(--text-tertiary);">Big glossy bubbles, one idea at a time — eye-catching from across the room. Includes break-room slides.</div></div>
+      </button>
+    </div>
+    <div style="padding:0 28px 22px;text-align:right;"><button class="btn" onclick="closeTvChooser()">Cancel</button></div>
+  </div>`;
+  m.addEventListener('click',e=>{ if(e.target===m) closeTvChooser(); });
+  document.body.appendChild(m);
 }
+function closeTvChooser(){ const m=$('tvChooser'); if(m) m.remove(); }
 
-function startTvCycle(){
-  // Switch to the dark TV theme for the big screen
+function stopAllTvCycles(){ stopCompleteCycle(); stopModularCycle(); }
+
+// ── COMPLETE CYCLE (full pages) ──
+function startCompleteCycle(){
+  stopModularCycle();
   applyTheme('midnight');
-  // Add the progress bar element if not present
   if(!$('tvCycleBar')){
-    const bar=document.createElement('div');
-    bar.id='tvCycleBar';
+    const bar=document.createElement('div'); bar.id='tvCycleBar';
     bar.style.cssText='position:fixed;top:0;left:0;height:3px;width:0;background:var(--amber);z-index:9999;transition:width 0.25s linear;box-shadow:0 0 8px var(--amber);';
     document.body.appendChild(bar);
   }
   const btn=$('tvCycleBtn'), label=$('tvCycleLabel');
-  if(btn) btn.style.background='var(--amber)';
-  if(btn) btn.style.color='#5A4A1F';
+  if(btn){ btn.style.background='var(--amber)'; btn.style.color='#5A4A1F'; }
   if(label) label.textContent='Stop Cycle';
-
-  // Begin at the current view if it's in the rotation, else from the start
   const curIdx=TV_CYCLE_VIEWS.indexOf(currentData.currentView);
   _tvCycleIdx = curIdx>=0 ? curIdx : 0;
-  window._tvCycleNavigating = true;
-  showView(TV_CYCLE_VIEWS[_tvCycleIdx]);
-  window._tvCycleNavigating = false;
-  runTvCycleTick();
-  showToast('TV Cycle on — rotating every 30s. Tap Stop Cycle to end.');
+  window._tvCycleNavigating = true; showView(TV_CYCLE_VIEWS[_tvCycleIdx]); window._tvCycleNavigating = false;
+  runCompleteTick();
+  showToast('Complete Cycle on — rotating every 30s.');
 }
-
-function runTvCycleTick(){
-  // animate progress bar over the dwell time, then advance
+function runCompleteTick(){
   const bar=$('tvCycleBar');
   if(bar){ bar.style.transition='none'; bar.style.width='0'; void bar.offsetWidth; bar.style.transition=`width ${TV_CYCLE_SECONDS}s linear`; bar.style.width='100%'; }
   _tvCycleTimer = setTimeout(()=>{
     _tvCycleIdx = (_tvCycleIdx + 1) % TV_CYCLE_VIEWS.length;
-    window._tvCycleNavigating = true;
-    showView(TV_CYCLE_VIEWS[_tvCycleIdx]);
-    window._tvCycleNavigating = false;
-    runTvCycleTick();
+    window._tvCycleNavigating = true; showView(TV_CYCLE_VIEWS[_tvCycleIdx]); window._tvCycleNavigating = false;
+    runCompleteTick();
   }, TV_CYCLE_SECONDS*1000);
 }
-
-function stopTvCycle(restoreTheme){
+function stopCompleteCycle(){
   if(_tvCycleTimer){ clearTimeout(_tvCycleTimer); _tvCycleTimer=null; }
   const bar=$('tvCycleBar'); if(bar) bar.remove();
   const btn=$('tvCycleBtn'), label=$('tvCycleLabel');
   if(btn){ btn.style.background=''; btn.style.color=''; }
   if(label) label.textContent='TV Cycle';
 }
-// Manually navigating (sidebar/tab/upload) stops the cycle so it doesn't fight the user
-function tvCycleUserInterrupt(){ if(_tvCycleTimer) stopTvCycle(); }
+// Back-compat aliases
+function toggleTvCycle(){ openTvChooser(); }
+function startTvCycle(){ startCompleteCycle(); }
+function stopTvCycle(){ stopCompleteCycle(); }
+
+// ═══════════════════════════════════════════
+// MODULAR TV CYCLE — full-screen glossy bento scenes + break-room slides
+// ═══════════════════════════════════════════
+const _tvModular = { active:false, timer:null, idx:0, scenes:[] };
+const TV_MODULAR_SECONDS = 30;
+
+function startModularCycle(){
+  stopCompleteCycle();
+  applyTheme('midnight');
+  _tvModular.active = true;
+  _tvModular.idx = 0;
+  buildModularScenes();
+  // create overlay
+  let ov=$('tvModular');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='tvModular';
+    document.body.appendChild(ov);
+  }
+  ov.className='tvm-overlay';
+  ov.innerHTML=`
+    <div class="tvm-bg"></div>
+    <div class="tvm-stage" id="tvmStage"></div>
+    <div class="tvm-chrome">
+      <div class="tvm-brand">
+        <svg width="30" height="30" viewBox="0 0 1200 1200"><path fill="#00818D" d="M596.662 144.389c34.998-3.172 61.633 12.496 92.264 26.447l92.646 42.659 148.298 67.771c24.231 11.112 55.887 23.912 77.53 38.258 13.33 8.839 24.72 33.444 25.74 49.353 1.78 27.628.95 59.551.93 87.73l-.04 172.002-.01 232.228.09 70.326c.13 33.766 7.63 85.057-38.179 90.057-15.486 1.69-29.669 1.15-45.212 1.13l-74.309-.02-285.711-.03-86.45.01c-14.861.01-38.143-.55-52.35 1.07l-.046-165.707c19.573 1.577 50.149.697 70.701.7l127.415-.019 121.152.044c21.565.013 43.424.502 64.903-.442 18.695-.822 32.803-15.317 34.427-33.722 1.872-21.221 1.396-42.176 1.37-63.418l-.058-96.799.038-113.437c.027-24.681.763-55.347-1.605-79.567-12.076-45.993-37.565-49.775-76.888-67.799l-72.36-33.097-54.019-24.848c-9.531-4.383-22.948-10.989-32.496-14.364a96.2 96.2 0 0 0-33.498-5.572c-25.078.388-42.907 10.519-65.353 20.392l-64.644 28.356-71.674 31.049c-12.541 5.403-30.558 12.592-42.119 18.702a78.6 78.6 0 0 0-19.741 14.962c-9.545 10.062-13.98 19.273-14.725 32.864-1.192 21.728-.655 45.343-.657 67.163l-.011 131.777.001 230.009c.004 39.353-.966 83.426.274 122.493-42.124-2.7-86.002 1.52-128.054-1.62-21.241-1.59-34.093-22.682-35.179-42.768-1.814-33.543-.949-67.966-.947-101.836l-.018-196.325-.042-204.259.009-63.039c.024-39.48-2.981-79.379 39.039-100.877 17.503-8.954 35.936-16.19 53.963-24.053l106.559-46.34 136.739-59.616c29.428-12.846 71.164-34.849 102.307-37.978"/></svg>
+        <div><div class="tvm-brand-name">PARTNERS</div><div class="tvm-brand-sub">MORTGAGE</div></div>
+      </div>
+      <div class="tvm-meta"><span id="tvmClock"></span><button class="tvm-exit" onclick="event.stopPropagation();stopModularCycle()">✕ Exit TV Mode</button></div>
+    </div>
+    <div class="tvm-progress"><div class="tvm-progress-fill" id="tvmProgress"></div></div>
+    <div class="tvm-dots" id="tvmDots"></div>
+    <div class="tvm-exithint" id="tvmExitHint">Tap anywhere to exit</div>`;
+  ov.style.display='block';
+  // Tap/click anywhere on the screen exits (great for a TV with a wandering cursor or touch)
+  ov.onclick = function(){ stopModularCycle(); };
+  // Escape key also exits (if a keyboard is attached)
+  _tvModular._esc = function(e){ if(e.key==='Escape') stopModularCycle(); };
+  document.addEventListener('keydown', _tvModular._esc);
+  const btn=$('tvCycleBtn'), label=$('tvCycleLabel');
+  if(btn){ btn.style.background='var(--amber)'; btn.style.color='#5A4A1F'; }
+  if(label) label.textContent='Stop Cycle';
+  document.documentElement.style.overflow='hidden';
+  startModularClock();
+  renderModularDots();
+  showModularScene(0, true);
+  showToast('Modular TV mode on — tap anywhere to exit.');
+}
+
+function stopModularCycle(){
+  if(_tvModular.timer){ clearTimeout(_tvModular.timer); _tvModular.timer=null; }
+  if(_tvModular._clock){ clearInterval(_tvModular._clock); _tvModular._clock=null; }
+  if(_tvModular._esc){ document.removeEventListener('keydown', _tvModular._esc); _tvModular._esc=null; }
+  _tvModular.active=false;
+  const ov=$('tvModular'); if(ov){ ov.onclick=null; ov.style.display='none'; ov.innerHTML=''; }
+  document.documentElement.style.overflow='';
+  const btn=$('tvCycleBtn'), label=$('tvCycleLabel');
+  if(btn){ btn.style.background=''; btn.style.color=''; }
+  if(label) label.textContent='TV Cycle';
+}
+
+function startModularClock(){
+  const upd=()=>{ const el=$('tvmClock'); if(el){ const d=new Date(); el.textContent=d.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'})+' · '+d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); } };
+  upd(); _tvModular._clock=setInterval(upd, 30000);
+}
+
+// Build the scene list from live data + Janine's slides
+function buildModularScenes(){
+  const scenes=[];
+  scenes.push({type:'production'});
+  scenes.push({type:'leaderboard'});
+  scenes.push({type:'lockleaders'});
+  scenes.push({type:'pipeline'});
+  scenes.push({type:'leadleaders'});
+  scenes.push({type:'leads'});
+  // Interleave break-room slides (birthdays etc.) — one after every couple of data scenes
+  const slides=(currentData.tvSlides||[]);
+  if(slides.length){
+    const merged=[];
+    scenes.forEach((s,i)=>{ merged.push(s); const sl=slides[i]; if(sl) merged.push({type:'slide', slide:sl}); });
+    for(let i=scenes.length;i<slides.length;i++) merged.push({type:'slide', slide:slides[i]});
+    _tvModular.scenes=merged;
+  } else {
+    _tvModular.scenes=scenes;
+  }
+}
+
+function renderModularDots(){
+  const el=$('tvmDots'); if(!el) return;
+  el.innerHTML=_tvModular.scenes.map((s,i)=>`<span class="tvm-dot${i===_tvModular.idx?' on':''}"></span>`).join('');
+}
+
+function showModularScene(idx, immediate){
+  if(!_tvModular.active) return;
+  _tvModular.idx = ((idx % _tvModular.scenes.length)+_tvModular.scenes.length)%_tvModular.scenes.length;
+  const scene=_tvModular.scenes[_tvModular.idx];
+  const stage=$('tvmStage'); if(!stage) return;
+  // build the scene HTML
+  let html='';
+  try {
+    if(scene.type==='production') html=tvmProductionScene();
+    else if(scene.type==='leaderboard') html=tvmLeaderboardScene();
+    else if(scene.type==='lockleaders') html=tvmLockLeadersScene();
+    else if(scene.type==='leadleaders') html=tvmLeadLeadersScene();
+    else if(scene.type==='pipeline') html=tvmPipelineScene();
+    else if(scene.type==='leads') html=tvmLeadsScene();
+    else if(scene.type==='slide') html=tvmSlideScene(scene.slide);
+  } catch(e){ console.warn('modular scene error', e); html=null; }
+
+  // If a scene has no data (e.g. no locks/leads yet), skip to the next one
+  if(html===null || html===undefined){
+    if(_tvModular.scenes.filter(s=>s.type!==scene.type).length===0){ html='<div class="tvm-scene"></div>'; }
+    else { showModularScene(_tvModular.idx+1, immediate); return; }
+  }
+
+  // transition out then in
+  stage.classList.remove('tvm-enter');
+  stage.classList.add('tvm-leave');
+  const swap=()=>{
+    stage.innerHTML=html;
+    stage.classList.remove('tvm-leave');
+    void stage.offsetWidth;
+    stage.classList.add('tvm-enter');
+    renderModularDots();
+    // restart progress bar
+    const p=$('tvmProgress');
+    if(p){ p.style.transition='none'; p.style.width='0'; void p.offsetWidth; p.style.transition=`width ${TV_MODULAR_SECONDS}s linear`; p.style.width='100%'; }
+  };
+  if(immediate){ swap(); } else { setTimeout(swap, 420); }
+  // schedule next
+  if(_tvModular.timer) clearTimeout(_tvModular.timer);
+  _tvModular.timer=setTimeout(()=>{ showModularScene(_tvModular.idx+1, false); }, TV_MODULAR_SECONDS*1000);
+}
+
+// ── Scene builders (big, glanceable) ──
+function tvmTile(opts){
+  // opts: {span, hero, label, value, sub, accent, delay, big}
+  const span=opts.span||'';
+  const accent=opts.accent||'var(--teal)';
+  const delay=opts.delay||0;
+  const valSize=opts.hero?'clamp(56px,7.4vw,126px)':'clamp(40px,4.5vw,80px)';
+  return `<div class="tvm-tile ${span}" style="animation-delay:${delay}s;${opts.bg?`background:${opts.bg};`:''}">
+    ${opts.label?`<div class="tvm-tile-label">${opts.label}</div>`:''}
+    <div class="tvm-tile-value" style="font-size:${valSize};${opts.color?`color:${opts.color};`:''}">${opts.value}</div>
+    ${opts.sub?`<div class="tvm-tile-sub" style="color:${accent};">${opts.sub}</div>`:''}
+    ${opts.extra||''}
+  </div>`;
+}
+
+function tvmProductionScene(){
+  // MTD production snapshot — fall back to YTD if the current month has no funded data yet
+  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const corrected = filterData(currentData.ytdData, {timePeriod:'YTD_2026', loFilter:'All'});
+  let mtd = corrected.filter(l=>toDateStr(l.fundingDate).slice(0,7)===curM);
+  let scope='Month to Date';
+  if(!mtd.length){ mtd = corrected; scope='Year to Date'; }
+  const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
+  const units=mtd.length;
+  const avg=units?vol/units:0;
+  const today=new Date().toISOString().split('T')[0];
+  const todayLoans=corrected.filter(l=>toDateStr(l.fundingDate)===today);
+  const purch=mtd.filter(l=>/purch/i.test(l.loanPurpose||'')).length;
+  const purchPct=units?Math.round(purch/units*100):0;
+  return `<div class="tvm-scene tvm-grid-prod">
+    <div class="tvm-eyebrow">Production · ${scope}</div>
+    ${tvmTile({span:'tvm-hero',hero:true,label:'Funded Volume',value:fmtK(vol),sub:`${units} loans funded`,accent:'var(--amber)',color:'#fff',delay:0.05})}
+    ${tvmTile({label:'Units',value:units,sub:`${fmtK(avg)} avg size`,delay:0.12})}
+    ${tvmTile({label:'Funded Today',value:todayLoans.length,sub:todayLoans.length?fmtK(todayLoans.reduce((s,l)=>s+l.loanAmount,0)):'—',accent:'var(--lime)',delay:0.18})}
+    ${tvmTile({label:'Purchase Mix',value:purchPct+'%',sub:'of production',accent:'var(--teal)',delay:0.24})}
+  </div>`;
+}
+
+function tvmLeaderboardScene(){
+  let {leads}=productionForPeriod('MTD');
+  let scope='Month to Date';
+  if(!leads.length){ ({leads}=productionForPeriod('YTD')); scope='Year to Date'; }
+  const ranked=rankLOs(leads,'volume');
+  return tvmRankScene({
+    eyebrow:`Producers · ${scope}`, headline:'Top Producers',
+    ranked, valOf:r=>r.vol, fmt:r=>fmtK(r.vol), unitLabel:r=>`${r.units} ${r.units===1?'loan':'loans'}`
+  });
+}
+
+function tvmLockLeadersScene(){
+  const pl=currentData.pipeline||[]; const now=new Date();
+  const active=pl.filter(l=>{ const le=l.lockExpiration||l.lockExpirationDate; if(!le||l.fundedDate||!(l.loanAmount>0))return false; const d=new Date(toDateStr(le)); return d>=now; });
+  const t={};
+  active.forEach(l=>{ const n=l.loName||'Unassigned'; if(!t[n])t[n]={name:n,vol:0,units:0}; t[n].vol+=l.loanAmount; t[n].units++; });
+  const ranked=Object.values(t).sort((a,b)=>b.vol-a.vol);
+  if(!ranked.length) return null; // skip scene if no lock data
+  return tvmRankScene({
+    eyebrow:'Locks · Active Pipeline', headline:'Lock Leaders',
+    ranked, valOf:r=>r.vol, fmt:r=>fmtK(r.vol), unitLabel:r=>`${r.units} locked`
+  });
+}
+
+function tvmLeadLeadersScene(){
+  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  let pool=(currentData.monthlyLeads||{})[curM]||[]; let scope='Month to Date';
+  if(!pool.length){ pool=(typeof allLeads==='function')?allLeads():[]; scope='Year to Date'; }
+  const t={};
+  pool.forEach(l=>{ const n=l.loName||l.owner||'Unassigned'; if(!t[n])t[n]={name:n,units:0,vol:0}; t[n].units++; t[n].vol+=(l.loanAmount||0); });
+  const ranked=Object.values(t).sort((a,b)=>b.units-a.units);
+  if(!ranked.length) return null;
+  return tvmRankScene({
+    eyebrow:`Leads · ${scope}`, headline:'Lead Leaders',
+    ranked, valOf:r=>r.units, fmt:r=>r.units, unitLabel:r=>fmtK(r.vol)+' vol', countMode:true
+  });
+}
+
+// Shared ranked-scene renderer: podium top 3 (proportional bars + trophy) + a grid of more names
+function tvmRankScene(opt){
+  const ranked=opt.ranked||[];
+  const top3=ranked.slice(0,3);
+  const maxVal=top3.length?opt.valOf(top3[0]):1;
+  const order=[top3[1],top3[0],top3[2]];
+  const colors=['var(--warm)','var(--amber)','var(--gold)'];
+  const placeNum=[2,1,3];
+  // Heights scale to actual value relative to #1 (low floor so the leader clearly towers)
+  const podium=order.map((r,i)=>{
+    if(!r) return '<div></div>';
+    const pct=Math.max(18, Math.round(opt.valOf(r)/maxVal*100));
+    const isWinner=placeNum[i]===1;
+    return `<div class="tvm-podium-col" style="animation-delay:${0.1+i*0.12}s;">
+      <div class="tvm-podium-name">${isWinner?'<span class="tvm-trophy">🏆</span> ':''}${r.name}</div>
+      <div class="tvm-podium-val">${opt.fmt(r)}</div>
+      <div class="tvm-podium-track"><div class="tvm-podium-bar" style="height:${pct}%;background:${colors[i]};"><span>${placeNum[i]}</span></div></div>
+      <div class="tvm-podium-units">${opt.unitLabel(r)}</div>
+    </div>`;
+  }).join('');
+  // More producers: ranks 4..N in a responsive multi-column grid (call out as many as fit)
+  const rest=ranked.slice(3, 15); // up to 12 more names
+  const restMax=rest.length?opt.valOf(rest[0]):1;
+  const restHtml=rest.map((r,i)=>{
+    const w=Math.max(6, Math.round(opt.valOf(r)/maxVal*100));
+    return `<div class="tvm-rank-row" style="animation-delay:${0.45+i*0.05}s;">
+      <span class="tvm-rank-n">${i+4}</span>
+      <span class="tvm-rank-name">${r.name}</span>
+      <span class="tvm-rank-bar"><span style="width:${w}%;"></span></span>
+      <span class="tvm-rank-val">${opt.fmt(r)}</span>
+    </div>`;
+  }).join('');
+  return `<div class="tvm-scene tvm-rank-scene">
+    <div class="tvm-eyebrow">${opt.eyebrow}</div>
+    <div class="tvm-headline">${opt.headline}</div>
+    <div class="tvm-podium">${podium}</div>
+    ${restHtml?`<div class="tvm-rank-grid">${restHtml}</div>`:''}
+  </div>`;
+}
+
+function tvmPipelineScene(){
+  const pl=currentData.pipeline||[];
+  const vol=pl.reduce((s,l)=>s+(l.loanAmount||0),0);
+  const ctc=pl.filter(l=>l.status==='Clear To Close'||l.clearToClose).length;
+  const now=new Date();
+  const activeLocks=pl.filter(l=>{ const le=l.lockExpiration||l.lockExpirationDate; if(!le||l.fundedDate||!(l.loanAmount>0))return false; const d=new Date(toDateStr(le)); return d>=now; });
+  const lockVol=activeLocks.reduce((s,l)=>s+l.loanAmount,0);
+  return `<div class="tvm-scene tvm-grid-prod">
+    <div class="tvm-eyebrow">Pipeline · Live</div>
+    ${tvmTile({span:'tvm-hero',hero:true,label:'Pipeline Volume',value:fmtK(vol),sub:`${pl.length} active loans`,accent:'var(--teal)',color:'#fff',delay:0.05})}
+    ${tvmTile({label:'Clear to Close',value:ctc,sub:'ready to fund',accent:'var(--lime)',delay:0.12})}
+    ${tvmTile({label:'Active Locks',value:activeLocks.length,sub:fmtK(lockVol)+' locked',accent:'var(--amber)',delay:0.18})}
+    ${tvmTile({label:'Avg Loan',value:fmtK(pl.length?vol/pl.length:0),sub:'in pipeline',accent:'var(--teal)',delay:0.24})}
+  </div>`;
+}
+
+function tvmLeadsScene(){
+  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  let mtd=(currentData.monthlyLeads||{})[curM]||[];
+  let scope='Month to Date';
+  if(!mtd.length){ mtd=(typeof allLeads==='function')?allLeads():[]; scope='Year to Date'; }
+  const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
+  const today=new Date().toISOString().split('T')[0];
+  const todayN=(function(){let n=0;Object.values(currentData.monthlyLeads||{}).forEach(a=>a.forEach(l=>{if(toDateStr(l.leadDate)===today)n++;}));return n;})();
+  const conv=(typeof computeLeadConversion==='function')?computeLeadConversion():{overallPct:null};
+  return `<div class="tvm-scene tvm-grid-prod">
+    <div class="tvm-eyebrow">Leads · ${scope}</div>
+    ${tvmTile({span:'tvm-hero',hero:true,label:'New Leads',value:mtd.length,sub:`${fmtK(vol)} in lead volume`,accent:'var(--amber)',color:'#fff',delay:0.05})}
+    ${tvmTile({label:'Leads Today',value:todayN,sub:todayN?'keep it going':'—',accent:'var(--lime)',delay:0.12})}
+    ${tvmTile({label:'Avg Lead',value:fmtK(mtd.length?vol/mtd.length:0),sub:'per new lead',accent:'var(--teal)',delay:0.18})}
+    ${tvmTile({label:'Lead → Loan',value:conv.overallPct!=null?conv.overallPct+'%':'—',sub:'conversion',accent:'var(--purple)',delay:0.24})}
+  </div>`;
+}
+
+function tvmSlideScene(slide){
+  // full-bleed image with gentle Ken Burns
+  return `<div class="tvm-slide"><img src="${slide.data}" alt="${(slide.name||'').replace(/"/g,'')}" class="tvm-slide-img"></div>`;
+}
+
 (function initTheme(){
   let t='daylight'; try { t=localStorage.getItem('pm_theme')||'daylight'; } catch(e){}
   document.documentElement.setAttribute('data-theme', t);
@@ -2028,6 +2527,7 @@ let currentData = {
   creditOverrides: {}, // { 'clientname': 'Assigned LO' } — manual fixes for David/Rachael loans, persisted to Firebase
   leifDecisions: {}, // { 'loankey': 'referred'|'leif' } — per-loan confirmations for Leif Potter referred loans
   pipelineUpdatedAt: 0, // timestamp of last pipeline upload — newer snapshot wins over bigger
+  tvSlides: [], // break-room full-screen slides (birthdays etc.) for Modular TV mode
   currentView: 'dashboard'
 };
 
@@ -2245,8 +2745,8 @@ const viewMeta = {
 };
 
 function showView(id) {
-  // If the user manually navigates while TV Cycle is running, stop the cycle
-  if(_tvCycleTimer && !window._tvCycleNavigating){ stopTvCycle(); }
+  // If the user manually navigates while the Complete cycle is running, stop it
+  if(_tvCycleTimer && !window._tvCycleNavigating){ stopCompleteCycle(); }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   const el = $(id);
   if (el) { el.classList.add('active'); currentData.currentView = id; }
@@ -2268,7 +2768,7 @@ function showView(id) {
   // Reset scroll to top of the new view (prevents landing mid-page on mobile)
   const content = document.querySelector('.content'); if (content) content.scrollTop = 0;
 
-  if (id === 'uploadView') { resetUpload(); initUploadDragDrop(); initScreenshotDropZone(); updateMonthlyManager(); }
+  if (id === 'uploadView') { resetUpload(); initUploadDragDrop(); initScreenshotDropZone(); updateMonthlyManager(); try{ renderTvSlideList(); initTvSlideDropZone(); }catch(e){} }
   if (id === 'leads') { try { updateLeadsView(); } catch(e){ console.warn('Leads view:', e); } }
   if (id === 'leaderboards') { try { updateLeaderboardsView(); } catch(e){ console.warn('Leaderboards view:', e); } }
   if (id === 'analytics') { try { updateAnalyticsView(); } catch(e){ console.warn('Analytics view:', e); } }
@@ -3103,6 +3603,78 @@ function applyDataAndReturn(){
 }
 
 // ── Monthly Data Manager UI ──
+// ── Break-room TV slide management ──
+// Resize/compress an image file to a TV-friendly data URL (keeps Firestore doc under limits)
+function resizeImageToDataURL(file, maxEdge, quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let {width:w, height:h}=img;
+        const scale=Math.min(1, maxEdge/Math.max(w,h));
+        w=Math.round(w*scale); h=Math.round(h*scale);
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d'); ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror=reject; img.src=e.target.result;
+    };
+    reader.onerror=reject; reader.readAsDataURL(file);
+  });
+}
+
+async function handleTvSlideUpload(event){
+  const files=Array.from(event.target.files||[]);
+  if(!files.length) return;
+  showToast(`Processing ${files.length} slide${files.length>1?'s':''}…`);
+  for(const file of files){
+    try {
+      // Resize to 1280px long edge @ 0.72 quality → ~150–300KB, glossy enough for a TV
+      const data=await resizeImageToDataURL(file, 1280, 0.72);
+      currentData.tvSlides.push({ id:'slide_'+Date.now()+'_'+Math.random().toString(36).slice(2,7), name:file.name.replace(/\.[^.]+$/,''), data, added:Date.now() });
+    } catch(e){ console.warn('slide process failed', e); showToast('Could not process '+file.name, true); }
+  }
+  event.target.value='';
+  renderTvSlideList();
+  // Warn if the collection is getting large for cloud sync
+  const totalKB=Math.round(currentData.tvSlides.reduce((s,sl)=>s+(sl.data?sl.data.length:0),0)/1024);
+  await saveTvSlidesToCloud();
+  if(totalKB>900) showToast('Slides saved locally. Heads up: lots of slides may exceed cloud sync limits — keep ~3–5 active.', true);
+  else showToast('Slides saved — they\'ll show in Modular TV mode');
+}
+
+function renderTvSlideList(){
+  const el=$('tvSlideList'), cnt=$('tvSlideCount');
+  if(!el) return;
+  const slides=currentData.tvSlides||[];
+  if(cnt) cnt.textContent=slides.length?`· ${slides.length}`:'';
+  if(!slides.length){ el.innerHTML='<p style="color:var(--text-tertiary);font-size:13px;padding:12px;">No slides yet — add a birthday or celebration image above.</p>'; return; }
+  el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">'+slides.map(s=>`
+    <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg-warm);">
+      <div style="aspect-ratio:16/9;background:#000;overflow:hidden;"><img src="${s.data}" style="width:100%;height:100%;object-fit:cover;"></div>
+      <div style="padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name||'Slide'}</span>
+        <button onclick="removeTvSlide('${s.id}')" title="Remove" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:16px;flex-shrink:0;">🗑</button>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+async function removeTvSlide(id){
+  currentData.tvSlides=(currentData.tvSlides||[]).filter(s=>s.id!==id);
+  renderTvSlideList();
+  await saveTvSlidesToCloud();
+  showToast('Slide removed');
+}
+
+function initTvSlideDropZone(){
+  const zone=$('tvSlideDropZone'); if(!zone||zone._wired) return; zone._wired=true;
+  zone.addEventListener('click', ()=>$('tvSlideInput').click());
+  ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.background='var(--bg-warm)';}));
+  ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.style.background='';}));
+  zone.addEventListener('drop',e=>{ const files=e.dataTransfer.files; if(files&&files.length){ handleTvSlideUpload({target:{files, value:''}}); } });
+}
+
 function updateMonthlyManager() {
   const el = $('monthlyManager');
   if(!el) return;
@@ -4609,6 +5181,7 @@ document.addEventListener('DOMContentLoaded',function(){
         currentData.leadsUpdatedAt=d.leadsUpdatedAt||0;
         currentData.creditOverrides=d.creditOverrides||{};
         currentData.leifDecisions=d.leifDecisions||{};
+        try { const ts=localStorage.getItem('pm_tvSlides'); if(ts) currentData.tvSlides=JSON.parse(ts)||[]; } catch(e){}
         currentData.goals=d.goals||currentData.goals;
         currentData.monthlyProduction=d.monthlyProduction||{};
         currentData.lockedMonths=d.lockedMonths||{};
@@ -4675,6 +5248,7 @@ document.addEventListener('DOMContentLoaded',function(){
     
     // Load from Firestore FIRST — merge cloud data, then push only if local has more
     initFirebase();
+    loadTvSlidesFromCloud().catch(()=>{});
     loadFromCloud().then(cloudUpdated => {
       // Always reattribute after cloud load — cloud may carry old David/Rachael credits
       let creditFixed = 0;
