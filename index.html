@@ -786,6 +786,10 @@ body {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Pipeline &amp; Locks
         </button>
+        <button class="nav-item" onclick="showView('leads')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          Leads
+        </button>
         <button class="nav-item" onclick="showView('reports')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
           Visual Analytics
@@ -895,6 +899,22 @@ body {
           <div class="momentum-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
           <div class="momentum-text" id="momentumText">Reading the month…</div>
           <div class="momentum-dots" id="momentumDots"></div>
+        </div>
+
+        <!-- Leads summary strip (shows once lead data exists) -->
+        <div id="leadsSummary" class="chart-card pm-anim" style="display:none;margin-bottom:16px;padding:14px 20px;animation-delay:0.04s;">
+          <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="momentum-icon" style="background:var(--teal);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+              <div><div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text-tertiary);text-transform:uppercase;">New Leads</div><div style="font-size:13px;color:var(--text-secondary);">Month to date</div></div>
+            </div>
+            <div style="display:flex;gap:32px;flex:1;">
+              <div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;" id="sumLeadMtd">0</div><div style="font-size:11px;color:var(--text-tertiary);">leads</div></div>
+              <div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;" id="sumLeadVol">$0</div><div style="font-size:11px;color:var(--text-tertiary);">lead volume</div></div>
+              <div><div style="font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--amber);" id="sumLeadToday">0</div><div style="font-size:11px;color:var(--text-tertiary);">today</div></div>
+            </div>
+            <button class="btn" onclick="showView('leads')">View all leads →</button>
+          </div>
         </div>
 
         <!-- KPI Row: one hero number + 4 supporting -->
@@ -1082,11 +1102,12 @@ body {
             <div class="chart-card-header">
               <div>
                 <div class="chart-card-title">Active Locks</div>
-                <div class="chart-card-subtitle">Units &amp; volume by loan officer</div>
+                <div class="chart-card-subtitle">Units &amp; volume by loan officer · <span id="pipelineAsOf" style="color:var(--text-tertiary);">no data</span></div>
               </div>
               <div id="lockSummary" style="text-align:right;">
                 <div style="font-size:22px;font-weight:800;color:var(--text-primary);" id="lockCount">0</div>
                 <div style="font-size:11px;color:var(--text-tertiary);" id="lockVolLabel">$0 locked volume</div>
+                <button class="btn" style="margin-top:6px;padding:3px 10px;font-size:10.5px;" onclick="forceRefreshPipeline()" title="Clear the stored pipeline snapshot so your next upload is used">↻ Refresh pipeline</button>
               </div>
             </div>
             <div id="lockTableWrap" style="max-height:260px;overflow-y:auto;">
@@ -1097,6 +1118,116 @@ body {
             </div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- ═══ LEADS VIEW ═══ -->
+      <div id="leads" class="view">
+        <div id="leadsEmpty" class="chart-card" style="padding:48px;text-align:center;">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:16px;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:6px;">No lead data yet</h3>
+          <p style="font-size:13px;color:var(--text-tertiary);">Upload the Admin Dashboard "All Leads/Loans" export to track new leads daily.</p>
+        </div>
+
+        <div id="leadsBody" style="display:none;">
+          <!-- Period filter -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text-tertiary);text-transform:uppercase;">Period</span>
+            <select id="leadPeriodFilter" class="filter-select" onchange="setLeadPeriod(this.value)">
+              <option value="MTD">Month to Date</option>
+              <option value="YTD">Year to Date</option>
+              <option value="Q1">Q1 (Jan–Mar)</option>
+              <option value="Q2">Q2 (Apr–Jun)</option>
+              <option value="2026-01">January</option>
+              <option value="2026-02">February</option>
+              <option value="2026-03">March</option>
+              <option value="2026-04">April</option>
+              <option value="2026-05">May</option>
+              <option value="2026-06">June</option>
+            </select>
+          </div>
+          <!-- Momentum -->
+          <div class="momentum-card pm-anim" style="animation-delay:0.05s;">
+            <div class="momentum-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+            <div class="momentum-text" id="leadMomentumText">Reading lead activity…</div>
+          </div>
+
+          <!-- Hero + supporting -->
+          <div class="kpi-row" style="grid-template-columns:1.6fr 1fr 1fr 1fr;">
+            <div class="kpi-card featured pm-anim">
+              <div class="kpi-top"><div class="kpi-label" id="leadHeroLabel">New Leads — MTD</div>
+                <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div>
+              </div>
+              <div class="kpi-value" id="leadHeroCount">0</div>
+              <div class="kpi-delta" id="leadHeroVol">$0 in lead volume</div>
+            </div>
+            <div class="kpi-card pm-anim" style="animation-delay:0.08s;">
+              <div class="kpi-top"><div class="kpi-label">Leads Today</div>
+                <div class="kpi-icon" style="background:var(--amber-bg);color:var(--amber);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+              </div>
+              <div class="kpi-value" id="leadToday">0</div>
+              <div class="kpi-delta neutral" id="leadTodayVol">—</div>
+            </div>
+            <div class="kpi-card pm-anim" style="animation-delay:0.14s;">
+              <div class="kpi-top"><div class="kpi-label">Avg Lead Size</div>
+                <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+              </div>
+              <div class="kpi-value" id="leadAvg">$0</div>
+              <div class="kpi-delta neutral">Per new lead</div>
+            </div>
+            <div class="kpi-card pm-anim" style="animation-delay:0.20s;">
+              <div class="kpi-top"><div class="kpi-label">Lead → Loan</div>
+                <div class="kpi-icon" style="background:var(--green-bg);color:var(--lime);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              </div>
+              <div class="kpi-value" id="leadConv">—</div>
+              <div class="kpi-delta neutral" id="leadConvSub">Conversion rate</div>
+            </div>
+          </div>
+
+          <!-- Daily trend + LO leaderboard -->
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;margin-bottom:14px;">
+            <div class="chart-card">
+              <div class="chart-card-header"><div>
+                <div class="chart-card-title" id="leadDailyTitle">Daily New Leads</div>
+                <div class="chart-card-subtitle" id="leadTrendSub">Leads created per day</div>
+              </div>
+              <div class="pill-group" id="leadTrendPills">
+                <button class="pill-btn active" onclick="setLeadTrendMode('count')">Count</button>
+                <button class="pill-btn" onclick="setLeadTrendMode('volume')">Volume</button>
+              </div></div>
+              <div class="chart-canvas-wrap" style="height:300px;"><canvas id="leadDailyChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header"><div>
+                <div class="chart-card-title">Top Loan Officers — Leads</div>
+                <div class="chart-card-subtitle">Ranked by lead count</div>
+              </div></div>
+              <div style="overflow-y:auto;max-height:300px;">
+                <table class="result-table" style="font-size:12.5px;width:100%;">
+                  <thead><tr><th style="width:32px;"></th><th style="text-align:left;">Loan Officer</th><th style="text-align:right;">Leads</th><th style="text-align:right;">Volume</th></tr></thead>
+                  <tbody id="leadLeaderboardBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conversion trend + source/status breakdown -->
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:14px;">
+            <div class="chart-card">
+              <div class="chart-card-header"><div>
+                <div class="chart-card-title">Lead → Loan Conversion by Month</div>
+                <div class="chart-card-subtitle">Share of each month's leads that became funded loans</div>
+              </div></div>
+              <div class="chart-canvas-wrap" style="height:260px;"><canvas id="leadConvChart"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-card-header"><div>
+                <div class="chart-card-title">Leads by Purpose</div>
+                <div class="chart-card-subtitle">Purchase vs refinance mix</div>
+              </div></div>
+              <div class="chart-canvas-wrap" style="height:260px;"><canvas id="leadPurposeChart"></canvas></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1468,10 +1599,24 @@ async function manualSync() {
     const cloudLocked = JSON.parse(d.lockedMonths || '{}');
     Object.assign(currentData.lockedMonths, cloudLocked);
     
-    if(cloudPipeline.length > currentData.pipeline.length) {
+    // Pipeline is a daily snapshot — newer wins, NOT bigger (stale large snapshots must not overwrite fresh ones)
+    const cloudPipeTime = d.pipelineUpdatedAt || 0;
+    const localPipeTime = currentData.pipelineUpdatedAt || 0;
+    if(cloudPipeline.length > 0 && cloudPipeTime > localPipeTime) {
       currentData.pipeline = cloudPipeline;
+      currentData.pipelineUpdatedAt = cloudPipeTime;
       updated = true;
-      log(`Updated pipeline: ${cloudPipeline.length} loans from cloud`, 'ok');
+      log(`Updated pipeline: ${cloudPipeline.length} loans from cloud (newer snapshot)`, 'ok');
+    } else if(cloudPipeline.length > 0 && localPipeTime > cloudPipeTime) {
+      log(`Kept local pipeline: ${currentData.pipeline.length} loans (yours is newer)`, 'ok');
+    }
+    
+    // Leads: newer export wins (full YTD history)
+    const cloudLeads = JSON.parse(d.monthlyLeads || '{}');
+    const cloudLeadTime = d.leadsUpdatedAt || 0;
+    if(Object.keys(cloudLeads).length && cloudLeadTime >= (currentData.leadsUpdatedAt||0)){
+      currentData.monthlyLeads = cloudLeads; currentData.leadsUpdatedAt = cloudLeadTime; updated = true;
+      log(`Updated leads from cloud`, 'ok');
     }
     
     const cloudGoals = JSON.parse(d.goals || 'null');
@@ -1520,8 +1665,12 @@ async function saveToCloud() {
       monthlyProduction: JSON.stringify(currentData.monthlyProduction),
       lockedMonths: JSON.stringify(currentData.lockedMonths),
       pipeline: JSON.stringify(currentData.pipeline),
+      pipelineUpdatedAt: currentData.pipelineUpdatedAt || 0,
+      monthlyLeads: JSON.stringify(currentData.monthlyLeads || {}),
+      leadsUpdatedAt: currentData.leadsUpdatedAt || 0,
       goals: JSON.stringify(currentData.goals),
       creditOverrides: JSON.stringify(currentData.creditOverrides || {}),
+      leifDecisions: JSON.stringify(currentData.leifDecisions || {}),
       screenshotStatuses: JSON.stringify(currentData._screenshotStatuses || []),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: navigator.userAgent.substring(0, 50)
@@ -1560,14 +1709,30 @@ async function loadFromCloud() {
     });
     Object.assign(currentData.lockedMonths, cloudLocked);
     
-    if(cloudPipeline.length > currentData.pipeline.length) {
+    // Pipeline = daily snapshot: newer wins, not bigger
+    const cloudPipeTime = d.pipelineUpdatedAt || 0;
+    const localPipeTime = currentData.pipelineUpdatedAt || 0;
+    if(cloudPipeline.length > 0 && cloudPipeTime > localPipeTime) {
       currentData.pipeline = cloudPipeline;
+      currentData.pipelineUpdatedAt = cloudPipeTime;
       updated = true;
     }
     if(cloudGoals) currentData.goals = cloudGoals;
+    // Leads: newer export wins
+    const cloudLeads = JSON.parse(d.monthlyLeads || '{}');
+    const cloudLeadTime = d.leadsUpdatedAt || 0;
+    if(Object.keys(cloudLeads).length && cloudLeadTime >= (currentData.leadsUpdatedAt||0)){
+      currentData.monthlyLeads = cloudLeads; currentData.leadsUpdatedAt = cloudLeadTime; updated = true;
+    }
     // Merge credit overrides (cloud + local union; cloud wins on conflict)
     if(cloudOverrides && Object.keys(cloudOverrides).length){
       currentData.creditOverrides = Object.assign({}, currentData.creditOverrides, cloudOverrides);
+      updated = true;
+    }
+    // Merge Leif Potter per-loan decisions
+    const cloudLeif = JSON.parse(d.leifDecisions || '{}');
+    if(cloudLeif && Object.keys(cloudLeif).length){
+      currentData.leifDecisions = Object.assign({}, currentData.leifDecisions, cloudLeif);
       updated = true;
     }
     if(cloudScreenshot.length > 0) currentData._screenshotStatuses = cloudScreenshot;
@@ -1631,10 +1796,15 @@ let currentData = {
   // Monthly production storage: { '2026-01': { loans: [...], locked: false }, ... }
   monthlyProduction: {},
   lockedMonths: {}, // { '2026-01': true, '2026-02': true }
+  // Lead storage: { '2026-01': [lead,...] } — a lead is one row dated by Created On
+  monthlyLeads: {},
+  leadsUpdatedAt: 0,
   charts: {},
   filters: { timePeriod: 'MTD', loFilter: 'All' },
   goals: { annualVolume: 240000000, annualUnits: 420, monthlyTarget: 20000000 },
   creditOverrides: {}, // { 'clientname': 'Assigned LO' } — manual fixes for David/Rachael loans, persisted to Firebase
+  leifDecisions: {}, // { 'loankey': 'referred'|'leif' } — per-loan confirmations for Leif Potter referred loans
+  pipelineUpdatedAt: 0, // timestamp of last pipeline upload — newer snapshot wins over bigger
   currentView: 'dashboard'
 };
 
@@ -1757,6 +1927,49 @@ function loadHistoricalData() {
   }
 }
 
+// ── Embedded YTD lead history (from Admin "All Leads/Loans" export, 6/26/2026). ──
+// Compact keys: d=date a=amount o=owner c=client p=purpose f=LOS file number.
+const HISTORICAL_LEADS = [{"d":"2026-06-24","a":313625,"o":"Jim Hagen","c":"William Woodard","p":"Purchase","f":"17098076"},{"d":"2026-05-29","a":280000,"o":"Russell Cunha","c":"Gabrielle Mosier","p":"Purchase","f":"16907052"},{"d":"2026-05-11","a":440000,"o":"Rob Garcia","c":"Edgar Oronia Camacho","p":"Purchase","f":"16766688"},{"d":"2026-06-15","a":495000,"o":"Nina Schatz Merrill","c":"Patrick Rippy","p":"Purchase","f":"17025318"},{"d":"2026-06-01","a":0,"o":"Craig Warn","c":"Shonte Shropshire","p":"Refinance","f":"16929834"},{"d":"2026-06-13","a":314000,"o":"Rob Garcia","c":"TJ Sirisak","p":"Purchase","f":"17020466"},{"d":"2026-05-12","a":300000,"o":"Michelle Paxton","c":"Alejandro Garibay","p":"Refinance","f":"16787894"},{"d":"2026-03-31","a":221250,"o":"Jeffrey Glass","c":"Seany Renfrow","p":"Refinance","f":"16462924"},{"d":"2026-06-24","a":950000,"o":"Katie Pastor Trinidad","c":"Michelle Zarrin","p":"Purchase","f":"17099107"},{"d":"2026-05-16","a":840000,"o":"Rachael Gaines","c":"Tim Purkis","p":"Purchase","f":"16821063"},{"d":"2026-06-24","a":400000,"o":"Shazia Dar","c":"Behnaz Ghaffari","p":"Purchase","f":"17098221"},{"d":"2026-06-18","a":579000,"o":"Jay Kiel","c":"Noah Bryan","p":"Purchase","f":"17096025"},{"d":"2026-06-25","a":700000,"o":"Sean McDonough","c":"Karla Mahuchy","p":"Purchase","f":"17100753"},{"d":"2026-03-16","a":53760,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16342948"},{"d":"2026-06-13","a":418000,"o":"Rob Garcia","c":"Reginald Evans","p":"Purchase","f":"17020548"},{"d":"2026-06-25","a":0,"o":"Josh Sommerfield","c":"satnam Singh","p":"Refinance","f":"17105891"},{"d":"2026-01-13","a":300000,"o":"Jason Malmstrom","c":"Allan Dosan","p":"Refinance","f":"15823674"},{"d":"2026-06-17","a":100000,"o":"Dave Miller","c":"George Garcia","p":"Refinance","f":"17049805"},{"d":"2026-06-23","a":0,"o":"Rachael Gaines","c":"Desira Trammell","p":"Refinance","f":"17087997"},{"d":"2026-04-19","a":731000,"o":"Katie Pastor Trinidad","c":"Morgan Kountouris","p":"Purchase","f":"16612505"},{"d":"2026-06-11","a":240000,"o":"Matthew Von Bergen","c":"Yasmeen bibi Farouk","p":"Purchase","f":"17009317"},{"d":"2026-05-26","a":500000,"o":"Rob Garcia","c":"Christina Ioane","p":"Purchase","f":"16882454"},{"d":"2026-04-21","a":528000,"o":"Katie Pastor Trinidad","c":"Emily Robertson","p":"Purchase","f":"16636124"},{"d":"2026-06-25","a":400000,"o":"Joel Morgan","c":"Glynn Kozloski","p":"Purchase","f":"17102005"},{"d":"2026-06-03","a":480000,"o":"Jason Malmstrom","c":"Brandt Pluskwik","p":"Purchase","f":"16947889"},{"d":"2026-06-25","a":350000,"o":"Matt Perez","c":"Angelita De La Trinidad","p":"Refinance","f":"17105493"},{"d":"2026-05-14","a":255000,"o":"Jason Malmstrom","c":"William Stryker","p":"Purchase","f":"16805435"},{"d":"2026-06-24","a":782609,"o":"Rob Garcia","c":"Caleb Shumway","p":"Purchase","f":"17099270"},{"d":"2026-06-25","a":0,"o":"Rob Garcia","c":"Alicia Andrews","p":"Purchase","f":"17104171"},{"d":"2026-06-25","a":210000,"o":"Allen Quinney","c":"Mike Rumsey","p":"Refinance","f":"17104175"},{"d":"2026-06-24","a":520000,"o":"Allen Quinney","c":"Rand Harris","p":"Refinance","f":"17095178"},{"d":"2026-05-13","a":89250,"o":"Greg Choinski","c":"Brenen Mellon","p":"Purchase","f":"16803137"},{"d":"2026-05-19","a":237500,"o":"Jason Malmstrom","c":"Isaac Sullivan","p":"Purchase","f":"16836723"},{"d":"2026-05-01","a":374000,"o":"Josh Sommerfield","c":"Ya-Nah Mandujano","p":"Purchase","f":"16717399"},{"d":"2026-06-19","a":110000,"o":"Rachael Gaines","c":"Jason Passmore","p":"Refinance","f":"17062932"},{"d":"2026-04-03","a":89250,"o":"Greg Choinski","c":"Brenen Mellon","p":"Purchase","f":"16489493"},{"d":"2026-06-20","a":388000,"o":"Jason Malmstrom","c":"Sean OBrien","p":"Purchase","f":"17067915"},{"d":"2026-06-24","a":475000,"o":"Katie Pastor Trinidad","c":"Janessa Ford","p":"Purchase","f":"17097704"},{"d":"2026-06-16","a":427500,"o":"Rob Garcia","c":"Karen Martinez Gutierrez","p":"Purchase","f":"17036640"},{"d":"2026-06-19","a":495000,"o":"Leif Potter","c":"Christopher Bucy","p":"Purchase","f":"17066496"},{"d":"2026-06-02","a":465109,"o":"Josh Sommerfield","c":"Ciara Stevenson","p":"Refinance","f":"16934026"},{"d":"2026-05-29","a":129809,"o":"Katie Pastor Trinidad","c":"Michael Johnston","p":"Refinance","f":"16911572"},{"d":"2026-06-25","a":632000,"o":"Katie Pastor Trinidad","c":"Marco Cruz","p":"Purchase","f":"17100450"},{"d":"2026-06-16","a":140000,"o":"Josh Sommerfield","c":"Manjinder Kaur","p":"Refinance","f":"17042203"},{"d":"2026-06-25","a":25000,"o":"Jay Kiel","c":"Ali Abbas","p":"Purchase","f":"17099437"},{"d":"2026-05-12","a":177000,"o":"Rob Garcia","c":"Maria Torres Alfaro","p":"Refinance","f":"16792335"},{"d":"2026-03-14","a":443900,"o":"Katie Pastor Trinidad","c":"Crystal Rogers","p":"Purchase","f":"16328729"},{"d":"2026-06-24","a":850000,"o":"Shazia Dar","c":"Kurtis Geer","p":"Purchase","f":"17098877"},{"d":"2026-06-18","a":58800,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"17054584"},{"d":"2026-06-09","a":482500,"o":"Katie Pastor Trinidad","c":"Troy Fox","p":"Purchase","f":"16991219"},{"d":"2026-06-10","a":516275,"o":"Rob Garcia","c":"Nathalie Beasnael","p":"Purchase","f":"17000805"},{"d":"2026-06-20","a":340000,"o":"Rob Garcia","c":"Elsa Perez-Lopez","p":"Purchase","f":"17069369"},{"d":"2026-01-12","a":549000,"o":"Shazia Dar","c":"Zonail Gul","p":"Purchase","f":"15818223"},{"d":"2026-06-14","a":584000,"o":"Rob Garcia","c":"Marcela Osorio Silva","p":"Purchase","f":"17023040"},{"d":"2026-06-04","a":50000,"o":"Matthew Von Bergen","c":"Erin Weitzenberg","p":"Refinance","f":"16957948"},{"d":"2026-06-10","a":120000,"o":"Matthew Von Bergen","c":"Christy Mocabee","p":"Refinance","f":"16996721"},{"d":"2026-06-22","a":600000,"o":"Lanny Setka","c":"Raymond Bojorquez","p":"Purchase","f":"17074419"},{"d":"2026-06-16","a":382500,"o":"Katie Pastor Trinidad","c":"Delmarie Williams","p":"Purchase","f":"17039423"},{"d":"2026-06-18","a":426550,"o":"Rusty Mendoza","c":"Ryan Brumm","p":"Purchase","f":"17058605"},{"d":"2026-06-22","a":832750,"o":"Katie Pastor Trinidad","c":"Jessica Sell","p":"Purchase","f":"17080250"},{"d":"2026-06-23","a":480000,"o":"Allen Quinney","c":"Rand Harris","p":"Purchase","f":"17085852"},{"d":"2026-06-20","a":452000,"o":"Barry Willner","c":"Andrew Kasseabum","p":"Refinance","f":"17067497"},{"d":"2026-06-18","a":118000,"o":"Jay Kiel","c":"Melanie Litchfield","p":"Purchase","f":"17059903"},{"d":"2026-06-16","a":85500,"o":"Jay Kiel","c":"Radouane Kefali","p":"Purchase","f":"17034318"},{"d":"2026-06-09","a":191200,"o":"Bobby Afrasiabi","c":"Vaibhav Sharma","p":"Purchase","f":"16992388"},{"d":"2026-06-18","a":496975,"o":"Katie Pastor Trinidad","c":"Brianna Reinhold","p":"Purchase","f":"17056510"},{"d":"2026-06-22","a":377000,"o":"Steven Lawrence","c":"Ashley Hunter","p":"Purchase","f":"17079677"},{"d":"2026-03-16","a":237650,"o":"Russell Cunha","c":"Carlos Soto","p":"Purchase","f":"16338612"},{"d":"2026-06-24","a":0,"o":"Rob Garcia","c":"Lorna Oyarce","p":"Purchase","f":"17091886"},{"d":"2026-06-13","a":35000,"o":"Greg Choinski","c":"Cody Mclouth","p":"Refinance","f":"17018647"},{"d":"2026-05-13","a":351500,"o":"Jason Malmstrom","c":"Travis Stone","p":"Purchase","f":"16798222"},{"d":"2026-06-22","a":750000,"o":"Andre Bishop","c":"Melissa McMorrow","p":"Purchase","f":"17079503"},{"d":"2026-06-23","a":505000,"o":"Rusty Mendoza","c":"Sherece Sbabo","p":"Purchase","f":"17087961"},{"d":"2026-06-17","a":600000,"o":"Katie Pastor Trinidad","c":"Brianna Reinhold","p":"Purchase","f":"17051258"},{"d":"2026-03-16","a":512000,"o":"Josh Sommerfield","c":"Alyssa Benedetti","p":"Purchase","f":"16336386"},{"d":"2026-01-02","a":414000,"o":"Matthew Von Bergen","c":"Christina GeigerOlguin","p":"Purchase","f":"15730988"},{"d":"2026-01-21","a":0,"o":"Michelle Paxton","c":"Ismaiel Hashimi","p":"Purchase","f":"10631834"},{"d":"2026-06-08","a":386000,"o":"Rusty Mendoza","c":"Sandra Delgadillo","p":"Purchase","f":"16981143"},{"d":"2026-06-09","a":570000,"o":"Rob Garcia","c":"Don Jeppson","p":"Purchase","f":"16992704"},{"d":"2026-06-11","a":120000,"o":"Bobby Afrasiabi","c":"Paul Greiff","p":"Refinance","f":"17007254"},{"d":"2026-06-13","a":579000,"o":"Jay Kiel","c":"Rahmat Mahmoud","p":"Purchase","f":"17018444"},{"d":"2026-06-23","a":440000,"o":"Jay Posey","c":"megan aaron","p":"Purchase","f":"17082636"},{"d":"2026-06-22","a":0,"o":"Mike Zamani","c":"Joaquin Vandergrift","p":"Refinance","f":"17080554"},{"d":"2026-06-08","a":395000,"o":"Jeffrey Glass","c":"Leroy Foster","p":"Purchase","f":"16982095"},{"d":"2026-05-24","a":0,"o":"Greg Choinski","c":"Bradley Frederick","p":"Refinance","f":"16872483"},{"d":"2026-06-20","a":408500,"o":"Rob Garcia","c":"Jackeline Alvarez Cruz","p":"Purchase","f":"17067818"},{"d":"2026-06-18","a":0,"o":"Josh Sommerfield","c":"Austin Terrell","p":"Purchase","f":"17053026"},{"d":"2026-04-14","a":678500,"o":"Rob Garcia","c":"Ricky Cardinez","p":"Refinance","f":"16555748"},{"d":"2026-06-08","a":400000,"o":"Joel Morgan","c":"Adam Haynes","p":"Refinance","f":"16982461"},{"d":"2026-05-22","a":997500,"o":"Rob Garcia","c":"Jose Guadalupe Arias Servin","p":"Purchase","f":"16866980"},{"d":"2026-06-07","a":351500,"o":"Rob Garcia","c":"Teresa Pedrizco Romero","p":"Purchase","f":"16972082"},{"d":"2026-06-22","a":495000,"o":"Craig Warn","c":"Aaron Hall","p":"Purchase","f":"17074588"},{"d":"2026-06-22","a":0,"o":"Bobby Afrasiabi","c":"Adekoya Otusanya","p":"Refinance","f":"17074152"},{"d":"2026-06-15","a":385000,"o":"Craig Warn","c":"Aaron Hall","p":"Purchase","f":"17030340"},{"d":"2026-06-22","a":0,"o":"Bobby Afrasiabi","c":"Boyd Walker","p":"Refinance","f":"17073653"},{"d":"2026-05-27","a":475000,"o":"Rob Garcia","c":"David Martinez Enriquez","p":"Purchase","f":"16895590"},{"d":"2026-06-20","a":501800,"o":"Andre Bishop","c":"Mauricio Velado","p":"Purchase","f":"17068581"},{"d":"2026-02-26","a":188175,"o":"Greg Choinski","c":"Carol Linares","p":"Refinance","f":"10707063"},{"d":"2026-03-03","a":376000,"o":"Craig Warn","c":"Rebecca Lane","p":"Refinance","f":"16261116"},{"d":"2026-01-07","a":0,"o":"Dereck Bowlen","c":"Brett O'hair","p":"Unknown","f":""},{"d":"2026-03-13","a":0,"o":"Barry Willner","c":"James Mcgorman","p":"Unknown","f":""},{"d":"2026-05-14","a":800000,"o":"Rusty Mendoza","c":"Kathryn Devon","p":"Purchase","f":"16811798"},{"d":"2026-05-02","a":200000,"o":"Jason Malmstrom","c":"Cheryl Hynes","p":"Refinance","f":"16717904"},{"d":"2026-04-24","a":463200,"o":"Rob Garcia","c":"Jennifer Brown","p":"Purchase","f":"16663468"},{"d":"2026-05-22","a":364000,"o":"Rob Garcia","c":"Jaime Castillo","p":"Purchase","f":"16868227"},{"d":"2026-06-20","a":559700,"o":"Andre Bishop","c":"Nicole Schrader","p":"Purchase","f":"17068553"},{"d":"2026-02-02","a":520000,"o":"Andre Bishop","c":"Mauricio Velado","p":"Purchase","f":"15982064"},{"d":"2026-06-18","a":260000,"o":"Josh Sommerfield","c":"Todd Turner","p":"Purchase","f":"17057942"},{"d":"2026-05-06","a":506625,"o":"Rob Garcia","c":"Gregory Steven","p":"Purchase","f":"16747950"},{"d":"2026-04-21","a":390825,"o":"Jason Malmstrom","c":"Ben Abrahamson","p":"Purchase","f":"16629691"},{"d":"2026-06-19","a":456000,"o":"Rusty Mendoza","c":"Abdul Ali Forugh","p":"Purchase","f":"17066470"},{"d":"2026-06-11","a":268753,"o":"Venane Brune","c":"Nancy Chidinma Jonah","p":"Purchase","f":"17007351"},{"d":"2026-06-18","a":225000,"o":"Rusty Mendoza","c":"Richard Lint","p":"Purchase","f":"17056537"},{"d":"2026-05-22","a":300000,"o":"Jay Posey","c":"Luis Marti","p":"Purchase","f":"16867827"},{"d":"2026-06-10","a":0,"o":"Barry Willner","c":"Scott Spiwak","p":"Refinance","f":"17002342"},{"d":"2026-06-19","a":330000,"o":"Barry Willner","c":"Jessica Gresham","p":"Purchase","f":"17061544"},{"d":"2026-05-19","a":224000,"o":"Russell Cunha","c":"Lisa Murphy","p":"Purchase","f":"16841732"},{"d":"2026-06-12","a":472500,"o":"Rachael Gaines","c":"Nicole Visnoski","p":"Purchase","f":"17013835"},{"d":"2026-06-17","a":300000,"o":"Rachael Gaines","c":"Sanvada Kitcher","p":"Refinance","f":"17047199"},{"d":"2026-06-16","a":0,"o":"Rob Garcia","c":"Victor Gomez","p":"Refinance","f":"17037865"},{"d":"2026-06-08","a":249000,"o":"Sierra Schutte","c":"Kassidy Langenderfer","p":"Purchase","f":"16980328"},{"d":"2026-06-07","a":1200000,"o":"Erik Papke","c":"Kjellrun Jones","p":"Purchase","f":"16971224"},{"d":"2026-06-04","a":183350,"o":"Jason Malmstrom","c":"Corrie Holshouser","p":"Purchase","f":"16954516"},{"d":"2026-06-04","a":405000,"o":"Jason Malmstrom","c":"Steven Lancaster","p":"Purchase","f":"16954308"},{"d":"2026-06-10","a":575000,"o":"Jason Malmstrom","c":"Daniel Guinee","p":"Purchase","f":"16998867"},{"d":"2026-06-16","a":150000,"o":"Jason Malmstrom","c":"Milton Jenson","p":"Purchase","f":"17041106"},{"d":"2026-06-09","a":203150,"o":"Rachael Gaines","c":"Vaibhav Sharma","p":"Purchase","f":"16990062"},{"d":"2026-05-24","a":51255,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16873900"},{"d":"2026-05-24","a":56100,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16874035"},{"d":"2026-05-24","a":51680,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16873992"},{"d":"2026-05-24","a":100130,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16873968"},{"d":"2026-05-24","a":51340,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16874012"},{"d":"2026-05-24","a":108000,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16872691"},{"d":"2026-05-24","a":48025,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16873850"},{"d":"2026-05-24","a":56100,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16874056"},{"d":"2026-06-16","a":420000,"o":"Shazia Dar","c":"Waleed Bin Khaled","p":"Purchase","f":"17033585"},{"d":"2026-06-17","a":0,"o":"Rob Garcia","c":"Daniel Domingo","p":"Refinance","f":"17050078"},{"d":"2026-06-02","a":807500,"o":"Josh Sommerfield","c":"Kawa Kawkab","p":"Purchase","f":"16934591"},{"d":"2026-05-18","a":152200,"o":"Josh Sommerfield","c":"Xiang Gao","p":"Refinance","f":"16829182"},{"d":"2026-06-11","a":0,"o":"Matthew Von Bergen","c":"SERGIO PADILLA-GONZALEZ","p":"Refinance","f":"17010444"},{"d":"2026-01-21","a":224100,"o":"Greg Choinski","c":"Erik Fancher","p":"Purchase","f":"10631791"},{"d":"2026-06-17","a":0,"o":"Matthew Von Bergen","c":"Arthur Velasquez","p":"Purchase","f":"17048606"},{"d":"2026-06-16","a":175000,"o":"Greg Choinski","c":"Kelly Ferris","p":"Refinance","f":"17038860"},{"d":"2026-04-29","a":356250,"o":"Rob Garcia","c":"Suzanne Katanic","p":"Purchase","f":"16695125"},{"d":"2026-05-05","a":375000,"o":"Josh Sommerfield","c":"Ahed Alshoubaki","p":"Purchase","f":"16742570"},{"d":"2026-06-11","a":0,"o":"Josh Sommerfield","c":"Raymond Keh","p":"Refinance","f":"17004080"},{"d":"2026-05-16","a":395500,"o":"Rusty Mendoza","c":"Gabriel Tuazon","p":"Purchase","f":"16822870"},{"d":"2026-01-07","a":130000,"o":"Russell Cunha","c":"Clayton Elrod","p":"Purchase","f":"15778915"},{"d":"2026-02-23","a":118800,"o":"Russell Cunha","c":"Steven Flanery","p":"Purchase","f":"16153192"},{"d":"2026-06-16","a":0,"o":"Bobby Afrasiabi","c":"Akash Sharma","p":"Refinance","f":"17042926"},{"d":"2026-06-02","a":650000,"o":"Michelle Paxton","c":"Francisco Ortigoza","p":"Purchase","f":"16938028"},{"d":"2026-05-06","a":525000,"o":"Rusty Mendoza","c":"Samuel Cox","p":"Refinance","f":"16749032"},{"d":"2026-06-02","a":384000,"o":"Katie Pastor Trinidad","c":"Roy M Broomfield","p":"Purchase","f":"16939115"},{"d":"2026-04-02","a":300000,"o":"Jeffrey Glass","c":"Matthew Calloway","p":"Refinance","f":"16483957"},{"d":"2026-04-30","a":760000,"o":"Rob Garcia","c":"Percival Pasion","p":"Purchase","f":"16709408"},{"d":"2026-06-05","a":325375,"o":"Jason Malmstrom","c":"Kyle Stangel","p":"Purchase","f":"16961059"},{"d":"2026-06-15","a":582000,"o":"Craig Warn","c":"Adriana Palomino","p":"Purchase","f":"17023616"},{"d":"2026-06-04","a":500000,"o":"Rachael Gaines","c":"Cynthia Miller","p":"Purchase","f":"16953001"},{"d":"2026-06-13","a":315250,"o":"Craig Warn","c":"Janet Rodriguez","p":"Purchase","f":"17021032"},{"d":"2026-06-16","a":560000,"o":"Megan O'Malley","c":"Allison Steenberg","p":"Refinance","f":"17036541"},{"d":"2026-06-16","a":0,"o":"Rafael Westhoff","c":"Lily Zong","p":"Refinance","f":"17036507"},{"d":"2026-05-28","a":590102,"o":"Joel Morgan","c":"Gail Davis","p":"Refinance","f":"16899938"},{"d":"2026-04-07","a":650000,"o":"Elvin Estela","c":"Catherine Azzopardi","p":"Purchase","f":"16522610"},{"d":"2026-06-15","a":0,"o":"Nancy Kinzer","c":"Gary Hall","p":"Refinance","f":"17032941"},{"d":"2026-06-15","a":386000,"o":"Joel Morgan","c":"Seth Russell","p":"Purchase","f":"17033484"},{"d":"2026-06-14","a":149400,"o":"Russell Cunha","c":"Landrie Cunha","p":"Purchase","f":"17021409"},{"d":"2026-04-16","a":968000,"o":"Shazia Dar","c":"jeina nguyen","p":"Refinance","f":"16598839"},{"d":"2026-03-10","a":522500,"o":"Josh Sommerfield","c":"Muhammad Khan","p":"Purchase","f":"16297896"},{"d":"2026-02-18","a":386000,"o":"Josh Sommerfield","c":"Mendelssohn Gallares","p":"Purchase","f":"16117794"},{"d":"2026-06-15","a":174500,"o":"Xavier Walker","c":"LaToia Robinson","p":"Purchase","f":"17027567"},{"d":"2026-05-26","a":598500,"o":"Jenny Nguyen Dinh","c":"Kim Ngan Thi Nguyen","p":"Purchase","f":"16885591"},{"d":"2026-06-15","a":168875,"o":"Xavier Walker","c":"Marguerite Clevidence","p":"Purchase","f":"17025866"},{"d":"2026-06-05","a":0,"o":"Jay Kiel","c":"Kacie Poage","p":"Purchase","f":"16959380"},{"d":"2026-06-14","a":250000,"o":"Rusty Mendoza","c":"Kristina York","p":"Purchase","f":"17023069"},{"d":"2026-06-11","a":832750,"o":"Rusty Mendoza","c":"Joel Baranowski","p":"Purchase","f":"17004753"},{"d":"2026-04-14","a":899000,"o":"Rob Garcia","c":"Ryan Johnson","p":"Purchase","f":"16555739"},{"d":"2026-06-13","a":850000,"o":"Rob Garcia","c":"Ryan Johnson","p":"Refinance","f":"17020518"},{"d":"2026-06-13","a":175000,"o":"Katie Pastor Trinidad","c":"Jaclyn Arevalo","p":"Purchase","f":"17020236"},{"d":"2026-06-04","a":228000,"o":"Shazia Dar","c":"Zafar Sheikh","p":"Purchase","f":"16959000"},{"d":"2026-06-11","a":354050,"o":"Rob Garcia","c":"Juan Garcia Guerrero","p":"Purchase","f":"17011112"},{"d":"2026-06-10","a":180000,"o":"Katie Pastor Trinidad","c":"Jeffrey Perry","p":"Purchase","f":"16996861"},{"d":"2026-06-11","a":175000,"o":"Shazia Dar","c":"Haseebullah Hassanzai","p":"Purchase","f":"17006627"},{"d":"2026-01-14","a":292500,"o":"Jason Malmstrom","c":"Jimmy Sugg","p":"Purchase","f":"15841599"},{"d":"2026-06-11","a":332500,"o":"Shazia Dar","c":"Noorzia Ahsas","p":"Purchase","f":"17009955"},{"d":"2026-06-11","a":0,"o":"Venane Brune","c":"Nathaniel Moore","p":"Refinance","f":"17007521"},{"d":"2026-05-15","a":827960,"o":"Steven Lawrence","c":"Patrick Adams","p":"Purchase","f":"16818469"},{"d":"2026-04-28","a":27000,"o":"Nancy Kinzer","c":"Kyle James","p":"Refinance","f":"16690791"},{"d":"2026-05-26","a":598500,"o":"Jenny Nguyen Dinh","c":"Le Hang Thi Nguyen","p":"Purchase","f":"16882586"},{"d":"2026-06-05","a":350000,"o":"Josh Sommerfield","c":"April Oledan","p":"Purchase","f":"16966870"},{"d":"2026-06-09","a":900000,"o":"Leif Potter","c":"Bradley Potterbaum","p":"Purchase","f":"16984311"},{"d":"2026-04-23","a":289500,"o":"Katie Pastor Trinidad","c":"Paige Andrade","p":"Purchase","f":"16653294"},{"d":"2026-03-02","a":543200,"o":"Katie Pastor Trinidad","c":"Wendy Holani","p":"Purchase","f":"16225222"},{"d":"2026-04-26","a":800000,"o":"Erik Papke","c":"Test Loan","p":"Purchase","f":"16667753"},{"d":"2026-06-09","a":0,"o":"Jay Kiel","c":"Elexis Lussier","p":"Purchase","f":"16992657"},{"d":"2026-04-24","a":361000,"o":"Shazia Dar","c":"Nghia Pham","p":"Purchase","f":"16658698"},{"d":"2026-04-24","a":342000,"o":"Shazia Dar","c":"Nghia Pham","p":"Purchase","f":"16658668"},{"d":"2026-05-06","a":386000,"o":"Joel Morgan","c":"Robert Lloyd","p":"Purchase","f":"16749995"},{"d":"2026-06-10","a":320000,"o":"Shazia Dar","c":"Thu Trung Nguyen","p":"Purchase","f":"16999047"},{"d":"2026-04-12","a":485000,"o":"Rob Garcia","c":"Nathalie Beasnael","p":"Purchase","f":"16558553"},{"d":"2026-05-18","a":200000,"o":"Rob Garcia","c":"Elias Tapia","p":"Refinance","f":"16835446"},{"d":"2026-06-10","a":767000,"o":"Katie Pastor Trinidad","c":"Danielle Jones","p":"Purchase","f":"16999460"},{"d":"2026-05-28","a":285000,"o":"Jason Malmstrom","c":"Shawn Wigg","p":"Purchase","f":"16897405"},{"d":"2026-06-02","a":427500,"o":"Jason Malmstrom","c":"Shawn Wigg","p":"Purchase","f":"16936724"},{"d":"2026-06-02","a":260550,"o":"Shazia Dar","c":"Anh Dinh","p":"Purchase","f":"16937498"},{"d":"2026-04-02","a":450000,"o":"Matthew Von Bergen","c":"Frank Morales","p":"Purchase","f":"16478678"},{"d":"2026-05-15","a":560000,"o":"Matthew Von Bergen","c":"Cynthia Hill","p":"Purchase","f":"16819227"},{"d":"2026-05-26","a":552500,"o":"Josh Sommerfield","c":"Sanil Prasad","p":"Purchase","f":"16880583"},{"d":"2026-05-29","a":800000,"o":"Rob Garcia","c":"Ramiro De la Riva Perez","p":"Purchase","f":"16909789"},{"d":"2026-06-09","a":190000,"o":"Rob Garcia","c":"Esmeralda Molinero Galvan","p":"Purchase","f":"16992277"},{"d":"2026-04-01","a":168875,"o":"Russell Cunha","c":"Cory Roberts","p":"Purchase","f":"16470018"},{"d":"2026-05-19","a":225000,"o":"Venane Brune","c":"crystal williams","p":"Purchase","f":"16841596"},{"d":"2026-05-28","a":0,"o":"Jay Johnson","c":"Brittany Enzbrenner","p":"Refinance","f":"16899839"},{"d":"2026-05-30","a":231600,"o":"Rob Garcia","c":"Leticia Silva","p":"Purchase","f":"16916186"},{"d":"2026-05-04","a":900000,"o":"Jason Malmstrom","c":"Jeffrey Spry","p":"Refinance","f":"16728290"},{"d":"2026-01-22","a":359100,"o":"Dereck Bowlen","c":"Kali Freele","p":"Purchase","f":"15908913"},{"d":"2026-02-08","a":475000,"o":"Shazia Dar","c":"Yayah Sesay","p":"Purchase","f":"16030772"},{"d":"2026-06-08","a":50000,"o":"Dereck Bowlen","c":"Sandra Loel-Johnston","p":"Purchase","f":"16980937"},{"d":"2026-05-26","a":187425,"o":"Venane Brune","c":"Juan Castillo Capiz","p":"Purchase","f":"16881225"},{"d":"2026-05-27","a":18950,"o":"Greg Choinski","c":"Sue Smith","p":"Purchase","f":"16887659"},{"d":"2026-06-08","a":595641,"o":"Shazia Dar","c":"Shahzaib Anam","p":"Purchase","f":"16975371"},{"d":"2026-06-03","a":627000,"o":"Katie Pastor Trinidad","c":"Kayla Furrer","p":"Purchase","f":"16944312"},{"d":"2026-05-14","a":800000,"o":"Rusty Mendoza","c":"Douglas Bank","p":"Purchase","f":"16809254"},{"d":"2026-05-29","a":75000,"o":"Leif Potter","c":"Laura Rosa","p":"Purchase","f":"16912348"},{"d":"2026-05-28","a":396000,"o":"Rusty Mendoza","c":"Adriana Garcia","p":"Purchase","f":"16901477"},{"d":"2026-06-05","a":450000,"o":"Josh Sommerfield","c":"Minh Bui","p":"Purchase","f":"16961042"},{"d":"2026-05-25","a":300000,"o":"Katie Pastor Trinidad","c":"David Hernandez","p":"Purchase","f":"16877187"},{"d":"2026-05-20","a":800000,"o":"Rob Garcia","c":"Javier Mejia Medrano","p":"Purchase","f":"16851367"},{"d":"2026-06-04","a":155000,"o":"Helen Woizeschke","c":"Sarah Woizeschke","p":"Purchase","f":"16954479"},{"d":"2026-02-03","a":630000,"o":"Russell Cunha","c":"Keri Jetton","p":"Purchase","f":"15996089"},{"d":"2026-02-26","a":352750,"o":"Katie Pastor Trinidad","c":"Aaron Moore","p":"Purchase","f":"16194169"},{"d":"2026-06-04","a":385000,"o":"Michelle Herzl","c":"Micheal Treviso","p":"Refinance","f":"16958588"},{"d":"2026-05-26","a":300000,"o":"Elvin Estela","c":"Jazmin Ortiz","p":"Purchase","f":"16884580"},{"d":"2026-05-11","a":720000,"o":"Shazia Dar","c":"Hung Trinh","p":"Purchase","f":"16780616"},{"d":"2026-04-07","a":764750,"o":"Katie Pastor Trinidad","c":"Christopher Jordan","p":"Purchase","f":"16520982"},{"d":"2026-06-03","a":0,"o":"Helen Woizeschke","c":"Sarah Woizeschke","p":"Purchase","f":"10761250"},{"d":"2026-04-20","a":684000,"o":"Shazia Dar","c":"Irsa Maryyum","p":"Purchase","f":"16625489"},{"d":"2026-06-03","a":480000,"o":"Rob Garcia","c":"Dylan Chen","p":"Purchase","f":"16948760"},{"d":"2026-05-08","a":600000,"o":"Michelle Herzl","c":"Matt Delio","p":"Refinance","f":"16770001"},{"d":"2026-05-18","a":612000,"o":"Rusty Mendoza","c":"Jon-Michael Plomteaux","p":"Purchase","f":"16830184"},{"d":"2026-04-24","a":392816,"o":"Rusty Mendoza","c":"Mia Lewis","p":"Purchase","f":"16659924"},{"d":"2026-05-19","a":461250,"o":"Jason Malmstrom","c":"Jacob Newlon","p":"Purchase","f":"16840624"},{"d":"2026-06-01","a":0,"o":"Bobby Afrasiabi","c":"Tameria Francois","p":"Refinance","f":"16920253"},{"d":"2026-03-22","a":220000,"o":"Leif Potter","c":"Aaron Bui","p":"Refinance","f":"16388310"},{"d":"2026-03-03","a":0,"o":"Josh Sommerfield","c":"Jared Lesa","p":"Refinance","f":"16233249"},{"d":"2026-02-01","a":569500,"o":"Josh Sommerfield","c":"Mueez Khan","p":"Purchase","f":"15977888"},{"d":"2026-01-23","a":855804,"o":"Katie Pastor Trinidad","c":"Jaclyn Schramm","p":"Purchase","f":"15915356"},{"d":"2026-02-15","a":626285,"o":"Katie Pastor Trinidad","c":"Emily Huska","p":"Purchase","f":"16089626"},{"d":"2026-01-27","a":585000,"o":"Josh Sommerfield","c":"Amrinder Singh","p":"Purchase","f":"15942181"},{"d":"2026-03-24","a":641250,"o":"Josh Sommerfield","c":"Liliana Zepeda","p":"Purchase","f":"16407874"},{"d":"2026-04-01","a":403750,"o":"Josh Sommerfield","c":"Paramjit Tung","p":"Purchase","f":"16476510"},{"d":"2026-01-06","a":360000,"o":"Robert Martiniello","c":"Jerry Salemi","p":"Purchase","f":"15769405"},{"d":"2026-03-23","a":970000,"o":"Rob Garcia","c":"David Miller","p":"Purchase","f":"16394368"},{"d":"2026-03-29","a":520000,"o":"Shazia Dar","c":"Maryam Fayaz","p":"Purchase","f":"16440871"},{"d":"2026-01-26","a":570000,"o":"Shazia Dar","c":"ABDUL WALEED SIDDIQUI","p":"Purchase","f":"15927370"},{"d":"2026-03-13","a":1600000,"o":"Kathleen Martiniello","c":"S Spaner","p":"Purchase","f":"16322076"},{"d":"2026-02-02","a":11590,"o":"Greg Choinski","c":"Ty Wyman","p":"Purchase","f":"15980895"},{"d":"2026-03-23","a":832000,"o":"Rob Garcia","c":"Alexander Sherry","p":"Purchase","f":"16396690"},{"d":"2026-03-27","a":332500,"o":"Jason Malmstrom","c":"Rhiannon Klein","p":"Purchase","f":"16430270"},{"d":"2026-04-06","a":960000,"o":"Rob Garcia","c":"Kirsten Erika Hsu","p":"Purchase","f":"16502403"},{"d":"2026-02-18","a":446200,"o":"Leif Potter","c":"Hannah Klinger","p":"Purchase","f":"16121209"},{"d":"2026-01-28","a":620350,"o":"Shazia Dar","c":"Rabia Dar","p":"Purchase","f":"15949103"},{"d":"2026-02-17","a":1120000,"o":"Michelle Paxton","c":"Hiwad Abedi","p":"Purchase","f":"16114851"},{"d":"2026-03-08","a":335000,"o":"Josh Sommerfield","c":"Kristy Knell","p":"Purchase","f":"16273374"},{"d":"2026-03-27","a":180455,"o":"Jason Malmstrom","c":"Brenden Dirks","p":"Purchase","f":"16434573"},{"d":"2026-02-05","a":1045000,"o":"Josh Sommerfield","c":"william salinas","p":"Purchase","f":"16015119"},{"d":"2026-03-16","a":285000,"o":"Josh Sommerfield","c":"Maria Louela Dimalanta","p":"Purchase","f":"16342039"},{"d":"2026-03-18","a":915000,"o":"Katie Pastor Trinidad","c":"Kylie Hobbs","p":"Purchase","f":"16365306"},{"d":"2026-01-17","a":168000,"o":"Shazia Dar","c":"Jiseok Jeong","p":"Purchase","f":"15864621"},{"d":"2026-03-03","a":132000,"o":"Venane Brune","c":"ANASTACHA MARCELLUS","p":"Purchase","f":"16236192"},{"d":"2026-02-06","a":280000,"o":"Michelle Paxton","c":"Mohammad Rasool Vazirisereshk","p":"Purchase","f":"16022010"},{"d":"2026-01-12","a":899000,"o":"Shazia Dar","c":"Siham Mahgoub","p":"Purchase","f":"15817325"},{"d":"2026-02-23","a":262500,"o":"Dereck Bowlen","c":"Daniel Gelbman","p":"Purchase","f":"16154420"},{"d":"2026-02-23","a":420000,"o":"Leif Potter","c":"Natalie Burleson","p":"Purchase","f":"16155288"},{"d":"2026-03-16","a":400000,"o":"Josh Sommerfield","c":"Harold Lind","p":"Purchase","f":"16336184"},{"d":"2026-01-27","a":400000,"o":"Jason Malmstrom","c":"Cassandra Nettleton","p":"Purchase","f":"15936250"},{"d":"2026-01-21","a":352000,"o":"Josh Sommerfield","c":"Asadullah Nazar Mohammad","p":"Purchase","f":"15895093"},{"d":"2026-02-09","a":525000,"o":"Jeffrey Glass","c":"Jonathan Chaikin","p":"Purchase","f":"16043723"},{"d":"2026-01-07","a":1170000,"o":"Erik Papke","c":"Itzel Aguilar Flores","p":"Purchase","f":"15777058"},{"d":"2026-02-27","a":570000,"o":"Katie Pastor Trinidad","c":"Brandy Wilder","p":"Purchase","f":"16203325"},{"d":"2026-01-11","a":395650,"o":"Josh Sommerfield","c":"Roberto Urenda Jauregui","p":"Purchase","f":"15807047"},{"d":"2026-01-18","a":495000,"o":"Katie Pastor Trinidad","c":"Austin Beck","p":"Purchase","f":"15866060"},{"d":"2026-01-19","a":400000,"o":"Jeffrey Glass","c":"Kristina Ide","p":"Purchase","f":"15874648"},{"d":"2026-04-06","a":2320000,"o":"Rob Garcia","c":"Daniel Massick","p":"Purchase","f":"16513797"},{"d":"2026-03-17","a":0,"o":"Elvin Estela","c":"joel morales","p":"Purchase","f":"16347808"},{"d":"2026-03-19","a":0,"o":"Venane Brune","c":"Gordon Swiney","p":"Purchase","f":"16366189"},{"d":"2026-04-05","a":600000,"o":"Matthew Von Bergen","c":"Amanda Anderson","p":"Purchase","f":"16496957"},{"d":"2026-03-25","a":0,"o":"Katie Pastor Trinidad","c":"Jessica Burnett","p":"Purchase","f":"16413980"},{"d":"2026-02-05","a":300000,"o":"Jason Malmstrom","c":"John Antus","p":"Refinance","f":"16013000"},{"d":"2026-03-13","a":832400,"o":"Katie Pastor Trinidad","c":"Taline Avanessian","p":"Purchase","f":"16323065"},{"d":"2026-04-07","a":570000,"o":"Katie Pastor Trinidad","c":"Lindsey Miller","p":"Purchase","f":"16518811"},{"d":"2026-04-03","a":351200,"o":"Shazia Dar","c":"trung do","p":"Purchase","f":"16487402"},{"d":"2026-01-19","a":157000,"o":"Venane Brune","c":"Reginald Collier","p":"Refinance","f":"15871980"},{"d":"2026-02-12","a":637500,"o":"Rusty Mendoza","c":"Allison Moores","p":"Purchase","f":"16074733"},{"d":"2026-03-23","a":250000,"o":"Rusty Mendoza","c":"Mindy Marino","p":"Purchase","f":"16390303"},{"d":"2026-03-17","a":187500,"o":"Michelle Herzl","c":"Cameron Walker","p":"Refinance","f":"16344504"},{"d":"2026-03-19","a":688000,"o":"Katie Pastor Trinidad","c":"Almira Ilagan","p":"Purchase","f":"16374257"},{"d":"2026-03-09","a":208000,"o":"Russell Cunha","c":"John Castro","p":"Purchase","f":"16284242"},{"d":"2026-04-01","a":174600,"o":"Carter Mason","c":"Matthew Penninger","p":"Purchase","f":"16468174"},{"d":"2026-03-30","a":432600,"o":"Nancy Kinzer","c":"Joyce Dunn","p":"Refinance","f":"16453197"},{"d":"2026-02-27","a":562500,"o":"Katie Pastor Trinidad","c":"Courtney Milhous","p":"Purchase","f":"16199967"},{"d":"2026-03-19","a":750000,"o":"Leif Potter","c":"Mark Dean","p":"Refinance","f":"16374040"},{"d":"2026-03-24","a":0,"o":"Leif Potter","c":"Carlos Giraldo","p":"Refinance","f":"16407567"},{"d":"2026-03-20","a":192000,"o":"Leif Potter","c":"Aaron Bui","p":"Refinance","f":"16380403"},{"d":"2026-03-06","a":306250,"o":"Katie Pastor Trinidad","c":"Jacob Moore","p":"Purchase","f":"16260991"},{"d":"2026-03-15","a":289500,"o":"Venane Brune","c":"Tamara Lambert-Smith","p":"Purchase","f":"16333188"},{"d":"2026-04-03","a":213750,"o":"Jason Malmstrom","c":"Hunter Watson","p":"Purchase","f":"16488789"},{"d":"2026-03-30","a":600000,"o":"Josh Sommerfield","c":"Tyler Marshall","p":"Purchase","f":"16450234"},{"d":"2026-03-05","a":520000,"o":"Elvin Estela","c":"Thomas Meehan","p":"Purchase","f":"16248492"},{"d":"2026-03-06","a":544000,"o":"Josh Sommerfield","c":"Keely Burke","p":"Purchase","f":"16266271"},{"d":"2026-03-30","a":122000,"o":"Russell Cunha","c":"Gregg Goss","p":"Purchase","f":"16447349"},{"d":"2026-03-21","a":262500,"o":"Greg Choinski","c":"Wolf Creek","p":"Refinance","f":"16385220"},{"d":"2026-03-31","a":920000,"o":"Katie Pastor Trinidad","c":"Melvin Martinez","p":"Purchase","f":"16456507"},{"d":"2026-03-28","a":352500,"o":"Matthew Von Bergen","c":"Christopher Schwartz-Edmisten","p":"Purchase","f":"16438022"},{"d":"2026-03-03","a":215000,"o":"Elvin Estela","c":"Juanita Jimenez","p":"Refinance","f":"16231620"},{"d":"2026-03-25","a":350000,"o":"Lanny Setka","c":"Delete File","p":"Purchase","f":"16416441"},{"d":"2026-03-30","a":213400,"o":"Bobby Afrasiabi","c":"George Davison","p":"Purchase","f":"16453057"},{"d":"2026-04-07","a":260000,"o":"Katie Pastor Trinidad","c":"Sayed Azamey","p":"Purchase","f":"16519382"},{"d":"2026-02-08","a":280000,"o":"Erik Papke","c":"Javier Avalos","p":"Purchase","f":"16031152"},{"d":"2026-01-10","a":772000,"o":"Elvin Estela","c":"Claudia Hernandez Romero","p":"Purchase","f":"15801982"},{"d":"2026-03-27","a":261900,"o":"Jason Malmstrom","c":"Alyssa Preston","p":"Purchase","f":"16432492"},{"d":"2026-03-12","a":400000,"o":"Jason Malmstrom","c":"Jerry Norlander","p":"Refinance","f":"16315875"},{"d":"2026-02-26","a":0,"o":"Leif Potter","c":"Janine Pace","p":"Refinance","f":"16183541"},{"d":"2026-03-13","a":171000,"o":"Jason Malmstrom","c":"Ethen O'Brien","p":"Purchase","f":"16324262"},{"d":"2026-03-30","a":102700,"o":"Nancy Kinzer","c":"Melissa Gray","p":"Refinance","f":"16452990"},{"d":"2026-03-21","a":415000,"o":"Katie Pastor Trinidad","c":"Stephanie Berens","p":"Purchase","f":"16383695"},{"d":"2026-03-26","a":227950,"o":"Jason Malmstrom","c":"Brennan Rilea","p":"Purchase","f":"16427844"},{"d":"2026-03-13","a":625000,"o":"Josh Sommerfield","c":"Maen Ahmad Abdallah Khraisat","p":"Purchase","f":"16322357"},{"d":"2026-04-06","a":310500,"o":"Leif Potter","c":"Luz Perry","p":"Refinance","f":"16513703"},{"d":"2026-03-30","a":306000,"o":"Katie Pastor Trinidad","c":"Jessica Bowman","p":"Refinance","f":"16448704"},{"d":"2026-03-30","a":202500,"o":"Michelle Herzl","c":"Tony Walter","p":"Purchase","f":"16451617"},{"d":"2026-03-31","a":188175,"o":"Steven Lawrence","c":"Sarah Kanebi","p":"Purchase","f":"16457924"},{"d":"2026-01-31","a":241250,"o":"Andre Bishop","c":"Prossy Baraba","p":"Purchase","f":"15972921"},{"d":"2026-02-23","a":635000,"o":"Josh Sommerfield","c":"Sharandeep Singh","p":"Purchase","f":"16161206"},{"d":"2026-02-24","a":27000,"o":"Bobby Afrasiabi","c":"Teadra Flowers","p":"Purchase","f":"16170265"},{"d":"2026-03-16","a":579000,"o":"Steven Lawrence","c":"Steven Lawrence","p":"Purchase","f":"16343567"},{"d":"2026-03-04","a":139370,"o":"Greg Choinski","c":"Isabel Griffith","p":"Refinance","f":"16248348"},{"d":"2026-02-25","a":386000,"o":"Katie Pastor Trinidad","c":"Nicholas Rennert","p":"Purchase","f":"16183120"},{"d":"2026-03-30","a":0,"o":"Nancy Kinzer","c":"Nancy Kinzer","p":"Refinance","f":"16451016"},{"d":"2026-03-19","a":960000,"o":"Katie Pastor Trinidad","c":"Christopher Burnett","p":"Purchase","f":"16368849"},{"d":"2026-03-05","a":339910,"o":"Andre Bishop","c":"Louie Grimaldo","p":"Purchase","f":"16257406"},{"d":"2026-03-14","a":525000,"o":"Joel Morgan","c":"Jazmine DeMartino","p":"Purchase","f":"16328043"},{"d":"2026-03-30","a":0,"o":"Erik Papke","c":"Joe Schmoe","p":"Purchase","f":"16451183"},{"d":"2026-03-24","a":665000,"o":"Katie Pastor Trinidad","c":"Theresa Leckey","p":"Purchase","f":"16409075"},{"d":"2026-01-20","a":1368000,"o":"Michelle Paxton","c":"BRUNO DE OLIVEIRA","p":"Refinance","f":"15880249"},{"d":"2026-03-18","a":435000,"o":"Jenny Nguyen Dinh","c":"Kaylie Phan","p":"Purchase","f":"16358370"},{"d":"2026-03-12","a":250000,"o":"Rusty Mendoza","c":"Nichole Jones","p":"Purchase","f":"16316605"},{"d":"2026-03-30","a":0,"o":"Erik Papke","c":"Name Name","p":"Purchase","f":"16451246"},{"d":"2026-03-30","a":750000,"o":"Shazia Dar","c":"Aaron Bui","p":"Refinance","f":"16451273"},{"d":"2026-04-03","a":271875,"o":"Jason Malmstrom","c":"Daniel Schaefer","p":"Purchase","f":"16486887"},{"d":"2026-03-24","a":90000,"o":"Michelle Herzl","c":"Nathan Ludwig","p":"Refinance","f":"16399438"},{"d":"2026-03-25","a":600000,"o":"Andre Bishop","c":"David Alda","p":"Purchase","f":"16414014"},{"d":"2026-03-25","a":452700,"o":"Katie Pastor Trinidad","c":"Erica Lopez","p":"Purchase","f":"16417477"},{"d":"2026-03-16","a":323000,"o":"Russell Cunha","c":"Breanna Esplin","p":"Purchase","f":"16342698"},{"d":"2026-03-31","a":800000,"o":"Paul Spagnoli","c":"Mark Bustillos","p":"Purchase","f":"16467229"},{"d":"2026-03-31","a":464000,"o":"Paul Spagnoli","c":"William Pender","p":"Purchase","f":"16467230"},{"d":"2026-03-31","a":572800,"o":"Paul Spagnoli","c":"Andreina Cabrera","p":"Refinance","f":"16467231"},{"d":"2026-03-31","a":400000,"o":"Paul Spagnoli","c":"Antonio Barajas","p":"Purchase","f":"16467232"},{"d":"2026-02-27","a":300000,"o":"Katie Pastor Trinidad","c":"Diana Leakey","p":"Purchase","f":"16203460"},{"d":"2026-03-04","a":114399,"o":"Greg Choinski","c":"Natasha Holtz","p":"Refinance","f":"16248366"},{"d":"2026-04-06","a":630000,"o":"Jenny Nguyen Dinh","c":"Binh Nguyen Ha","p":"Purchase","f":"16509588"},{"d":"2026-03-25","a":400000,"o":"Josh Sommerfield","c":"Ranjit Kaur","p":"Purchase","f":"16418566"},{"d":"2026-02-15","a":186702,"o":"Katie Pastor Trinidad","c":"Carolina Landeros","p":"Purchase","f":"16089655"},{"d":"2026-01-31","a":482500,"o":"Matthew Von Bergen","c":"Karina Fiallos","p":"Purchase","f":"15975089"},{"d":"2026-03-27","a":520000,"o":"Jason Malmstrom","c":"Robert Swor","p":"Refinance","f":"16432911"},{"d":"2026-02-09","a":525000,"o":"Katie Pastor Trinidad","c":"Jonathan Diebold","p":"Refinance","f":"16033295"},{"d":"2026-02-17","a":932000,"o":"Elvin Estela","c":"Joseph Sioufi","p":"Purchase","f":"16110215"},{"d":"2026-03-16","a":66150,"o":"Greg Choinski","c":"Brooklyn Wingfield","p":"Purchase","f":"16341493"},{"d":"2026-03-17","a":400000,"o":"Josh Sommerfield","c":"Tonee Lee","p":"Purchase","f":"16353809"},{"d":"2026-03-12","a":703000,"o":"Erik Papke","c":"Jesus Cuaxiloa","p":"Purchase","f":"16311144"},{"d":"2026-03-25","a":605811,"o":"Josh Sommerfield","c":"Avery Perales","p":"Refinance","f":"16410020"},{"d":"2026-03-25","a":0,"o":"Greg Choinski","c":"Taylor Moses","p":"Refinance","f":"16415771"},{"d":"2026-04-06","a":1199980,"o":"Rob Garcia","c":"Kirsten Erika Hsu","p":"Purchase","f":"16513075"},{"d":"2026-04-07","a":533500,"o":"Jason Malmstrom","c":"Keely Gelineau","p":"Purchase","f":"16516211"},{"d":"2026-03-02","a":675000,"o":"Michelle Herzl","c":"Michelle Test","p":"Refinance","f":"16225288"},{"d":"2026-03-18","a":810000,"o":"Elvin Estela","c":"Michelle O'Grady","p":"Purchase","f":"16360982"},{"d":"2026-03-14","a":530000,"o":"Josh Sommerfield","c":"Jatinder Kaur","p":"Purchase","f":"16328269"},{"d":"2026-03-16","a":357036,"o":"Jenny Nguyen Dinh","c":"Tuan Vuong","p":"Refinance","f":"16340271"},{"d":"2026-02-03","a":260000,"o":"Greg Choinski","c":"Bradley Frederick","p":"Refinance","f":"15988817"},{"d":"2026-03-12","a":0,"o":"Helen Woizeschke","c":"Larry Schaefer","p":"Refinance","f":"16309924"},{"d":"2026-03-03","a":0,"o":"Jeffrey Glass","c":"Ryan Drake","p":"Unknown","f":""},{"d":"2026-02-17","a":432000,"o":"Michelle Herzl","c":"Sean Burke","p":"Refinance","f":"16108339"},{"d":"2026-02-08","a":1400000,"o":"Katie Pastor Trinidad","c":"Arthur Vavrinyuk","p":"Purchase","f":"16032522"},{"d":"2026-03-03","a":350000,"o":"Josh Sommerfield","c":"Cheri Pinto","p":"Purchase","f":"16231511"},{"d":"2026-03-03","a":720000,"o":"Katie Pastor Trinidad","c":"Brittany Powell","p":"Purchase","f":"16229624"},{"d":"2026-01-16","a":594000,"o":"Josh Sommerfield","c":"Azimullah Safi","p":"Purchase","f":"15860638"},{"d":"2026-04-06","a":800000,"o":"Michelle Paxton","c":"Yi Tian","p":"Purchase","f":"10724629"},{"d":"2026-03-05","a":0,"o":"Rusty Mendoza","c":"Sandra Gong","p":"Refinance","f":"16257065"},{"d":"2026-03-09","a":712500,"o":"Dereck Bowlen","c":"Isaac Conde","p":"Purchase","f":"16280771"},{"d":"2026-01-08","a":0,"o":"Leif Potter","c":"Leandro Rodrigue","p":"Purchase","f":"15788248"},{"d":"2026-01-27","a":489250,"o":"Josh Sommerfield","c":"Saima Mahmood","p":"Purchase","f":"15941795"},{"d":"2026-01-20","a":540000,"o":"Nancy Kinzer","c":"Jay Jones","p":"Refinance","f":"15886479"},{"d":"2026-01-17","a":200000,"o":"Rusty Mendoza","c":"Charles Hunt","p":"Purchase","f":"15863444"},{"d":"2026-03-11","a":150000,"o":"Greg Choinski","c":"Greg Choinski","p":"Refinance","f":"10713305"},{"d":"2026-03-02","a":1070000,"o":"Lanny Setka","c":"Christopher Harris","p":"Purchase","f":"16215877"},{"d":"2026-03-02","a":450000,"o":"Matthew Von Bergen","c":"Meghan Lopez","p":"Purchase","f":"16225601"},{"d":"2026-02-26","a":480000,"o":"Josh Sommerfield","c":"Mohammad Rahimi","p":"Purchase","f":"16194279"},{"d":"2026-02-17","a":556000,"o":"Matthew Von Bergen","c":"Don Vincent Lopez","p":"Refinance","f":"16108159"},{"d":"2026-02-03","a":130000,"o":"Jason Malmstrom","c":"Lynne Tomczak","p":"Purchase","f":"15995077"},{"d":"2026-03-09","a":175000,"o":"Erik Papke","c":"Octavio Trejo","p":"Purchase","f":"16278613"},{"d":"2026-03-02","a":3500000,"o":"Jenny Nguyen Dinh","c":"Jenny Nguyen Dinh","p":"Refinance","f":"16225248"},{"d":"2026-01-08","a":592000,"o":"Shazia Dar","c":"Muhammad Rabbani","p":"Purchase","f":"15783032"},{"d":"2026-02-11","a":627250,"o":"Josh Sommerfield","c":"Lalit Bhatoy","p":"Purchase","f":"16063320"},{"d":"2026-01-06","a":276450,"o":"Daniel O'Brien","c":"Christina Oakley","p":"Refinance","f":"15761931"},{"d":"2026-01-08","a":160000,"o":"Jason Malmstrom","c":"Dakota Woodruff","p":"Purchase","f":"15786183"},{"d":"2026-02-23","a":0,"o":"Jeffrey Glass","c":"Shlomo Eploboim","p":"Unknown","f":""},{"d":"2026-03-04","a":568750,"o":"Harry Gu","c":"Xiaoxue Liao","p":"Refinance","f":"16241156"},{"d":"2026-02-20","a":450000,"o":"Jenny Nguyen Dinh","c":"Han Tran","p":"Refinance","f":"16138027"},{"d":"2026-02-20","a":960000,"o":"Andre Bishop","c":"John Costa","p":"Purchase","f":"16141032"},{"d":"2026-01-20","a":876000,"o":"Josh Sommerfield","c":"Harjot Dhaliwal","p":"Purchase","f":"15887242"},{"d":"2026-06-02","a":550000,"o":"Josh Sommerfield","c":"Hailey Boyer","p":"Purchase","f":"16935904"},{"d":"2026-01-06","a":250000,"o":"Jay Johnson","c":"Paul Busch","p":"Purchase","f":"15768109"},{"d":"2026-01-07","a":300000,"o":"Shazia Dar","c":"Mohammad Usman Raza","p":"Refinance","f":"15770014"},{"d":"2026-01-08","a":865000,"o":"Matt Perez","c":"Lee Gabriel","p":"Refinance","f":"15787215"},{"d":"2026-01-12","a":0,"o":"Russell Cunha","c":"Martha MCDOUGAL","p":"Refinance","f":"15808299"},{"d":"2026-02-25","a":427500,"o":"Josh Sommerfield","c":"Wolete Atherley","p":"Purchase","f":"16173154"},{"d":"2026-02-19","a":0,"o":"Josh Sommerfield","c":"Cristian torres Torres","p":"Refinance","f":"10644544"},{"d":"2026-01-31","a":657660,"o":"Barry Willner","c":"Charlene Castillo","p":"Purchase","f":"15973559"},{"d":"2026-01-31","a":495000,"o":"Matthew Von Bergen","c":"Karina Fiallos","p":"Purchase","f":"15975089"},{"d":"2026-03-04","a":215000,"o":"Daniel O'Brien","c":"Kyle Johnson","p":"Refinance","f":"16242792"},{"d":"2026-01-12","a":289483,"o":"Venane Brune","c":"COLETTE NICOLAS","p":"Refinance","f":"15812822"},{"d":"2026-01-05","a":0,"o":"Nina Schatz Merrill","c":"Dawn Breau","p":"Purchase","f":"15755435"},{"d":"2026-01-14","a":0,"o":"Megan O'Malley","c":"Cesar Ramirez Jr","p":"Purchase","f":"15837134"},{"d":"2026-01-05","a":390000,"o":"Michelle Paxton","c":"Damien Turner","p":"Purchase","f":"10624254"},{"d":"2026-01-30","a":600000,"o":"Rachael Gaines","c":"Austin Ketchersid","p":"Purchase","f":"15968477"},{"d":"2026-01-08","a":292950,"o":"Megan O'Malley","c":"Cesar Ramirez","p":"Purchase","f":"15787335"},{"d":"2026-01-21","a":540000,"o":"Nancy Kinzer","c":"Jay Jones","p":"Refinance","f":"15890533"},{"d":"2026-01-09","a":463500,"o":"Josh Sommerfield","c":"Autumn Teach","p":"Purchase","f":"15793170"},{"d":"2026-01-05","a":228000,"o":"Michelle Herzl","c":"Mitchell Thomas","p":"Refinance","f":"15749332"},{"d":"2026-01-07","a":0,"o":"Matthew Von Bergen","c":"Lynn Meder","p":"Refinance","f":"15773771"},{"d":"2026-02-06","a":479000,"o":"Matthew Von Bergen","c":"Johnny Virgen","p":"Refinance","f":"16023311"},{"d":"2026-01-19","a":940000,"o":"Josh Sommerfield","c":"Vartan Nalbandyan","p":"Purchase","f":"15875496"},{"d":"2026-03-06","a":171000,"o":"Greg Choinski","c":"Taylor Moses","p":"Refinance","f":"16261253"},{"d":"2026-01-07","a":706000,"o":"Josh Sommerfield","c":"William McDaniel","p":"Purchase","f":"15772004"},{"d":"2026-01-08","a":436000,"o":"Katie Pastor Trinidad","c":"Marilyn Lounsbury","p":"Refinance","f":"15787876"},{"d":"2026-02-25","a":420000,"o":"Jenny Nguyen Dinh","c":"ha dinh","p":"Refinance","f":"16179377"},{"d":"2026-04-06","a":1300000,"o":"Michelle Paxton","c":"Nic Rios","p":"Refinance","f":"10724734"},{"d":"2026-02-21","a":320000,"o":"Josh Sommerfield","c":"Jatinder Kaur","p":"Purchase","f":"16144961"},{"d":"2026-02-06","a":575000,"o":"Katie Pastor Trinidad","c":"Christopher Brehm","p":"Purchase","f":"16019388"},{"d":"2026-01-28","a":0,"o":"Derek Sepulveda","c":"Jamarr Garcia","p":"Refinance","f":"15950510"},{"d":"2026-02-23","a":173604,"o":"Greg Choinski","c":"Jayden Ables","p":"Purchase","f":"16159107"},{"d":"2026-02-20","a":247000,"o":"Shazia Dar","c":"Imran Ahmad","p":"Purchase","f":"16135199"},{"d":"2026-02-11","a":298000,"o":"Joseph Andrews","c":"Erin Kegley","p":"Purchase","f":"16057927"},{"d":"2026-03-17","a":114399,"o":"Greg Choinski","c":"Natasha Holtz","p":"Refinance","f":"10716481"},{"d":"2026-01-27","a":440000,"o":"Josh Sommerfield","c":"Nawras Almaqableh","p":"Purchase","f":"15940166"},{"d":"2026-02-01","a":337750,"o":"Andre Bishop","c":"Brittni Hernandez","p":"Purchase","f":"15977361"},{"d":"2026-02-02","a":483000,"o":"Josh Sommerfield","c":"Mandeep Singh","p":"Purchase","f":"15986423"},{"d":"2026-03-13","a":0,"o":"Bobby Afrasiabi","c":"ROSS RETMIER","p":"Refinance","f":"16323998"},{"d":"2026-03-02","a":346500,"o":"Matthew Von Bergen","c":"Jonathan Lopez","p":"Purchase","f":"16225657"},{"d":"2026-02-13","a":488800,"o":"Nina Schatz Merrill","c":"Marlene Burruel","p":"Purchase","f":"16078691"},{"d":"2026-02-19","a":0,"o":"Lanny Setka","c":"Breeana Garcia","p":"Purchase","f":"16130941"},{"d":"2026-01-28","a":200000,"o":"Jenny Nguyen Dinh","c":"Khuong Vo","p":"Refinance","f":"15947345"},{"d":"2026-03-11","a":122550,"o":"Greg Choinski","c":"Keith Carr","p":"Purchase","f":"16298551"},{"d":"2026-01-11","a":575000,"o":"Matthew Von Bergen","c":"Doyle Keeton","p":"Purchase","f":"15807247"},{"d":"2026-01-11","a":575000,"o":"Matthew Von Bergen","c":"James Meeks","p":"Purchase","f":"15807249"},{"d":"2026-01-12","a":308800,"o":"Katie Pastor Trinidad","c":"Victor Rodriguez","p":"Purchase","f":"15819956"},{"d":"2026-02-12","a":0,"o":"Katie Pastor Trinidad","c":"Eula Hill","p":"Refinance","f":"16074462"},{"d":"2026-02-09","a":420000,"o":"Jeffrey Glass","c":"Ranjeet Singh","p":"Purchase","f":"16039327"},{"d":"2026-02-21","a":190000,"o":"Katie Pastor Trinidad","c":"Julie Moore","p":"Purchase","f":"16143846"},{"d":"2026-01-27","a":0,"o":"Nina Schatz Merrill","c":"Quinn Bamert","p":"Purchase","f":"15935427"},{"d":"2026-01-19","a":173500,"o":"John Mason","c":"Tammy Stockard","p":"Purchase","f":"15875966"},{"d":"2026-01-19","a":327000,"o":"Leif Potter","c":"Jason Bennett","p":"Refinance","f":"15870462"},{"d":"2026-01-16","a":772000,"o":"Joel Morgan","c":"Timothy Nazaroff","p":"Purchase","f":"15860097"},{"d":"2026-02-17","a":400000,"o":"Michelle Paxton","c":"DOROTHY AFFLECK","p":"Refinance","f":"10643578"},{"d":"2026-02-20","a":635000,"o":"Rusty Mendoza","c":"Ismael Perez","p":"Purchase","f":"16139575"},{"d":"2026-02-05","a":0,"o":"Jason Malmstrom","c":"Ross Duncan","p":"Purchase","f":"16017083"},{"d":"2026-02-09","a":237500,"o":"Jason Malmstrom","c":"Elizabeth Rodgers","p":"Purchase","f":"16039743"},{"d":"2026-02-04","a":440100,"o":"Elvin Estela","c":"Mehmet Batmaz","p":"Purchase","f":"15999668"},{"d":"2026-02-05","a":325000000,"o":"Katie Pastor Trinidad","c":"Nicole Russo","p":"Purchase","f":"16017071"},{"d":"2026-01-26","a":420000,"o":"Josh Sommerfield","c":"DERRICK MCLAUGHLIN","p":"Purchase","f":"15933150"},{"d":"2026-01-19","a":760000,"o":"Josh Sommerfield","c":"Saifullah Safi","p":"Purchase","f":"15874177"},{"d":"2026-01-19","a":345000,"o":"Josh Sommerfield","c":"Patrick Ohara","p":"Purchase","f":"15876884"},{"d":"2026-03-09","a":0,"o":"Joel Morgan","c":"Venkata Aditya Addepalli","p":"Refinance","f":"16283936"},{"d":"2026-01-15","a":0,"o":"Matthew Von Bergen","c":"Heather Reyes","p":"Refinance","f":"15851641"},{"d":"2026-02-27","a":336000,"o":"Josh Sommerfield","c":"Fatemah Matar","p":"Purchase","f":"16196741"},{"d":"2026-02-13","a":412250,"o":"Josh Sommerfield","c":"Ammara Nadeem","p":"Purchase","f":"16082603"},{"d":"2026-02-21","a":120500,"o":"Russell Cunha","c":"Ronald Rhyne","p":"Purchase","f":"16145049"},{"d":"2026-01-12","a":0,"o":"Jenny Nguyen Dinh","c":"Thinh Nguyen","p":"Purchase","f":"15814868"},{"d":"2026-01-13","a":210000,"o":"Michelle Herzl","c":"David Weeks","p":"Purchase","f":"15824740"},{"d":"2026-01-13","a":200000,"o":"Katie Pastor Trinidad","c":"Jesse Bernal","p":"Refinance","f":"15828145"},{"d":"2026-01-18","a":635000,"o":"Barry Willner","c":"Jarrod Maslin","p":"Purchase","f":"15867943"},{"d":"2026-02-05","a":579000,"o":"Rusty Mendoza","c":"Amanda England","p":"Purchase","f":"16013499"},{"d":"2026-02-13","a":185000,"o":"Jason Malmstrom","c":"Cheryl Hynes","p":"Refinance","f":"16080495"},{"d":"2026-04-02","a":635000,"o":"Dave Miller","c":"Test Testing","p":"Purchase","f":"10723881"},{"d":"2026-02-26","a":96000,"o":"Greg Choinski","c":"Lonnie Tompkins","p":"Purchase","f":"16191908"},{"d":"2026-02-26","a":145000,"o":"Jason Malmstrom","c":"Molly Martens","p":"Refinance","f":"16192444"},{"d":"2026-01-13","a":516275,"o":"Latasha Augustine","c":"Rosalind Jsawta","p":"Purchase","f":"15826172"},{"d":"2026-01-13","a":0,"o":"Bobby Afrasiabi","c":"COLETTE Nicolas","p":"Refinance","f":"15828712"},{"d":"2026-01-16","a":468000,"o":"Shazia Dar","c":"Vann Haymon","p":"Refinance","f":"15852684"},{"d":"2026-02-26","a":201685,"o":"Greg Choinski","c":"Nicole Johnson","p":"Purchase","f":"16192003"},{"d":"2026-02-05","a":380000,"o":"Frank Helmand","c":"Jennifer Speech-Lovett","p":"Refinance","f":"16013540"},{"d":"2026-03-13","a":0,"o":"Bobby Afrasiabi","c":"Robert retmier","p":"Refinance","f":"16323106"},{"d":"2026-03-06","a":364000,"o":"Angela Duncan","c":"Gregg Gardiner","p":"Refinance","f":"16267246"},{"d":"2026-02-25","a":341100,"o":"Megan O'Malley","c":"Brenda Borrower","p":"Purchase","f":"16179246"},{"d":"2026-02-23","a":0,"o":"Katie Pastor Trinidad","c":"Sophie Peters","p":"Refinance","f":"16151201"},{"d":"2026-02-15","a":250000,"o":"Helen Woizeschke","c":"Rashad Clay","p":"Purchase","f":"16088128"},{"d":"2026-01-29","a":150000,"o":"Katie Pastor Trinidad","c":"Deborah Smith","p":"Purchase","f":"15955829"},{"d":"2026-01-26","a":0,"o":"Katie Pastor Trinidad","c":"Jordon Vice","p":"Refinance","f":"15927158"},{"d":"2026-03-09","a":225000,"o":"Helen Woizeschke","c":"Jacob Rinehimer","p":"Purchase","f":"16275993"},{"d":"2026-02-26","a":243200,"o":"Jason Malmstrom","c":"Molly Martens","p":"Refinance","f":"16192510"},{"d":"2026-02-26","a":316000,"o":"Andre Bishop","c":"Luis Grimaldo","p":"Purchase","f":"10707055"},{"d":"2026-02-12","a":529500,"o":"Josh Sommerfield","c":"Gurpreet Singh","p":"Refinance","f":"16070982"},{"d":"2026-02-25","a":434250,"o":"Josh Sommerfield","c":"Alexander Hubbard","p":"Purchase","f":"16182068"},{"d":"2026-02-25","a":195000,"o":"Josh Sommerfield","c":"Jamaluddin Hanif","p":"Purchase","f":"16182902"},{"d":"2026-02-12","a":1555400,"o":"Matthew Von Bergen","c":"Don Vincent Lopez","p":"Purchase","f":"16074748"},{"d":"2026-02-16","a":703485,"o":"Josh Sommerfield","c":"Adrian Garcia","p":"Purchase","f":"16099634"},{"d":"2026-01-29","a":617500,"o":"Shazia Dar","c":"Fanny Conteh","p":"Purchase","f":"15962506"},{"d":"2026-02-16","a":450000,"o":"Josh Sommerfield","c":"Surinder Sohal","p":"Purchase","f":"16093238"},{"d":"2026-02-25","a":400000,"o":"Jason Malmstrom","c":"Christopher Schrock","p":"Refinance","f":"16177977"},{"d":"2026-03-03","a":800000,"o":"Josh Sommerfield","c":"Jenifer Torres Navarro","p":"Purchase","f":"16226308"},{"d":"2026-03-23","a":482500,"o":"Andre Bishop","c":"Claudia Serrano","p":"Purchase","f":"10718572"},{"d":"2026-02-24","a":425000,"o":"Robert DeWeese","c":"Robert Hutchinson","p":"Refinance","f":"10704782"},{"d":"2026-01-14","a":660000,"o":"John Mason","c":"Keith Griffin","p":"Purchase","f":"15833542"},{"d":"2026-01-30","a":530500,"o":"Josh Sommerfield","c":"Jackie Harris","p":"Purchase","f":"15971497"},{"d":"2026-02-06","a":400000,"o":"Dereck Bowlen","c":"Andrea Schaffer","p":"Purchase","f":"16024413"},{"d":"2026-02-26","a":1080000,"o":"Katie Pastor Trinidad","c":"Kevin Gresh","p":"Purchase","f":"16190456"},{"d":"2026-02-26","a":386000,"o":"Latasha Augustine","c":"Marceides Roberson","p":"Purchase","f":"16194773"},{"d":"2026-02-20","a":354000,"o":"Elvin Estela","c":"Angela Carter","p":"Purchase","f":"16141621"},{"d":"2026-02-02","a":135100,"o":"Greg Choinski","c":"Isabel Griffith","p":"Refinance","f":"15985673"},{"d":"2026-02-05","a":480000,"o":"Katie Pastor Trinidad","c":"Trinidad Sanchez","p":"Purchase","f":"16017791"},{"d":"2026-02-27","a":960000,"o":"Josh Sommerfield","c":"Ranajoy Nandi","p":"Purchase","f":"16198357"},{"d":"2026-03-04","a":168000,"o":"Michelle Herzl","c":"Heather Dorsey","p":"Refinance","f":"16245864"},{"d":"2026-06-02","a":680000,"o":"Rob Garcia","c":"Lan Ma","p":"Purchase","f":"16940379"},{"d":"2026-06-02","a":215000,"o":"Helen Woizeschke","c":"Brandon Buckheit","p":"Purchase","f":"16938718"},{"d":"2026-04-29","a":820000,"o":"Michelle Paxton","c":"Luis Ching","p":"Refinance","f":"16698109"},{"d":"2026-05-11","a":680000,"o":"Josh Sommerfield","c":"Rosemary Torres","p":"Refinance","f":"16781795"},{"d":"2026-05-27","a":582000,"o":"Rusty Mendoza","c":"Lealai Tupou","p":"Purchase","f":"16892708"},{"d":"2026-04-14","a":389500,"o":"Josh Sommerfield","c":"Marta Kaminczak","p":"Purchase","f":"16580066"},{"d":"2026-06-01","a":119000,"o":"Bobby Afrasiabi","c":"narcisse marchand II","p":"Purchase","f":"16929492"},{"d":"2026-05-28","a":175000,"o":"Dave Miller","c":"Randy Wynn","p":"Purchase","f":"16905411"},{"d":"2026-05-06","a":620800,"o":"Derek Sepulveda","c":"Michael McClung","p":"Purchase","f":"16750665"},{"d":"2026-05-14","a":145000,"o":"Derek Sepulveda","c":"Anthony Amalfitano","p":"Refinance","f":"16809734"},{"d":"2026-05-29","a":375000,"o":"Rusty Mendoza","c":"Lisa Anderson","p":"Purchase","f":"16912803"},{"d":"2026-05-30","a":217500,"o":"Michelle Herzl","c":"Christian Velarde","p":"Refinance","f":"16914265"},{"d":"2026-05-29","a":420000,"o":"Michelle Herzl","c":"Alex Frantzis","p":"Refinance","f":"16913200"},{"d":"2026-05-28","a":395000,"o":"Nancy Kinzer","c":"Bruce Russell","p":"Purchase","f":"16901330"},{"d":"2026-04-25","a":450000,"o":"Rob Garcia","c":"Alyssa Robin","p":"Purchase","f":"16665829"},{"d":"2026-05-25","a":0,"o":"Rusty Mendoza","c":"Hayley Paige","p":"Purchase","f":"16876714"},{"d":"2026-05-25","a":285000,"o":"Rob Garcia","c":"David Reynolds","p":"Purchase","f":"16876993"},{"d":"2026-05-27","a":382500,"o":"Rob Garcia","c":"Nicole Sherman","p":"Purchase","f":"16890598"},{"d":"2026-04-20","a":506625,"o":"Leif Potter","c":"Briana Ani","p":"Purchase","f":"16626023"},{"d":"2026-05-26","a":550000,"o":"Ryan Ross","c":"Orla Neary","p":"Purchase","f":"16886920"},{"d":"2026-05-17","a":340000,"o":"Russell Cunha","c":"Carmel Beais","p":"Purchase","f":"16824562"},{"d":"2026-05-27","a":150000,"o":"Dave Miller","c":"Randy Wynn","p":"Purchase","f":"16892761"},{"d":"2026-05-27","a":308000,"o":"Rusty Mendoza","c":"Eduardo Ramirez-Pena","p":"Refinance","f":"16890637"},{"d":"2026-05-14","a":230000,"o":"Russell Cunha","c":"David Fincher","p":"Purchase","f":"16811844"},{"d":"2026-05-25","a":790000,"o":"Rob Garcia","c":"Leon Teekasingh","p":"Purchase","f":"16876248"},{"d":"2026-04-12","a":580000,"o":"Rob Garcia","c":"Luz Ayala","p":"Purchase","f":"16557879"},{"d":"2026-05-26","a":484500,"o":"Rob Garcia","c":"Blanca Contreras Enamorado","p":"Purchase","f":"16886020"},{"d":"2026-05-26","a":427500,"o":"Nina Schatz Merrill","c":"Tony Perez","p":"Purchase","f":"16883097"},{"d":"2026-05-13","a":0,"o":"Venane Brune","c":"Karian Williams","p":"Refinance","f":"16801354"},{"d":"2026-04-12","a":189900,"o":"Greg Choinski","c":"Jennifer Schwartz","p":"Purchase","f":"16557462"},{"d":"2026-05-25","a":0,"o":"Rob Garcia","c":"Cecilio Figueroa Castillo","p":"Purchase","f":"16876926"},{"d":"2026-05-20","a":651375,"o":"Rob Garcia","c":"Cara Joyce Luzada","p":"Purchase","f":"16846741"},{"d":"2026-05-25","a":541500,"o":"Rob Garcia","c":"Jose Quintor Alvarez","p":"Purchase","f":"16876339"},{"d":"2026-05-17","a":832750,"o":"Rob Garcia","c":"Oscar Gutierrez Usme","p":"Purchase","f":"16825553"},{"d":"2026-05-22","a":105000,"o":"Lance Cornell","c":"Vinicius Solano Moraes de Carvalho","p":"Purchase","f":"16862606"},{"d":"2026-05-22","a":444750,"o":"Leif Potter","c":"Todd Curran","p":"Purchase","f":"16868675"},{"d":"2026-05-05","a":77250,"o":"Katie Pastor Trinidad","c":"Anthony Lewandowski","p":"Refinance","f":"16738714"},{"d":"2026-05-14","a":499000,"o":"Jay Johnson","c":"Reese Skinner","p":"Purchase","f":"16804647"},{"d":"2026-04-27","a":414995,"o":"Katie Pastor Trinidad","c":"Matthew Maloney","p":"Purchase","f":"16680861"},{"d":"2026-05-19","a":124000,"o":"Elvin Estela","c":"Ian Hickey","p":"Purchase","f":"16838627"},{"d":"2026-05-21","a":125000,"o":"Greg Choinski","c":"Luke Butts","p":"Refinance","f":"16862402"},{"d":"2026-05-13","a":50000,"o":"Venane Brune","c":"Arbishua Rojas","p":"Refinance","f":"16803159"},{"d":"2026-05-13","a":168875,"o":"Daniel O'Brien","c":"Matthew Arnold","p":"Purchase","f":"16796557"},{"d":"2026-05-04","a":530750,"o":"Katie Pastor Trinidad","c":"Patrick Verrett","p":"Purchase","f":"16732431"},{"d":"2026-04-24","a":384341,"o":"Rusty Mendoza","c":"Bahareh Sadegh","p":"Purchase","f":"16657842"},{"d":"2026-05-21","a":72000,"o":"Jason Malmstrom","c":"Ryan Aho","p":"Purchase","f":"16856418"},{"d":"2026-04-21","a":386000,"o":"Katie Pastor Trinidad","c":"Maria Angeles","p":"Purchase","f":"16636439"},{"d":"2026-05-14","a":531000,"o":"Katie Pastor Trinidad","c":"Ryan Fontenot","p":"Purchase","f":"16812008"},{"d":"2026-05-15","a":250900,"o":"Jay Johnson","c":"Muhammed sinan Ciba","p":"Purchase","f":"16815962"},{"d":"2026-05-20","a":0,"o":"Sierra Schutte","c":"Nikki Thorn","p":"Refinance","f":"16853068"},{"d":"2026-04-27","a":386250,"o":"Michelle Herzl","c":"Nick Kazakov","p":"Refinance","f":"16679985"},{"d":"2026-04-23","a":0,"o":"Nancy Kinzer","c":"Elsie Hart","p":"Refinance","f":"16655333"},{"d":"2026-05-20","a":0,"o":"Jason Malmstrom","c":"Donald Sexton","p":"Purchase","f":"16852882"},{"d":"2026-04-16","a":495000,"o":"Leif Potter","c":"Yen Carroll","p":"Purchase","f":"16594891"},{"d":"2026-05-18","a":775000,"o":"Shazia Dar","c":"Moimir Dubon","p":"Purchase","f":"16834961"},{"d":"2026-04-29","a":463200,"o":"Sean McDonough","c":"Gifty Brenyah","p":"Purchase","f":"16691264"},{"d":"2026-05-17","a":107000,"o":"Josh Sommerfield","c":"Jose Gutierrez","p":"Purchase","f":"16824200"},{"d":"2026-05-19","a":270000,"o":"Rob Garcia","c":"Lindsey Powell","p":"Refinance","f":"16843075"},{"d":"2026-04-25","a":521100,"o":"Rob Garcia","c":"Gina Duarte","p":"Purchase","f":"16665021"},{"d":"2026-04-17","a":304000,"o":"Rob Garcia","c":"Juan Ortega","p":"Purchase","f":"16607501"},{"d":"2026-05-07","a":430000,"o":"Daniel O'Brien","c":"Alejandra Ochoa Martinez","p":"Purchase","f":"16762683"},{"d":"2026-04-09","a":340000,"o":"Rob Garcia","c":"Anita Mariscal","p":"Purchase","f":"16534757"},{"d":"2026-05-19","a":688750,"o":"Katie Pastor Trinidad","c":"Connor Williams","p":"Purchase","f":"16841940"},{"d":"2026-05-04","a":688750,"o":"Katie Pastor Trinidad","c":"Connor Williams","p":"Purchase","f":"16733901"},{"d":"2026-05-19","a":0,"o":"Katie Pastor Trinidad","c":"Solitofaga SueSue","p":"Purchase","f":"16841054"},{"d":"2026-04-23","a":536000,"o":"Leif Potter","c":"ashley knies","p":"Purchase","f":"16649088"},{"d":"2026-05-14","a":285000,"o":"Rob Garcia","c":"Elpedio Jamosmos","p":"Purchase","f":"16809581"},{"d":"2026-05-01","a":475000,"o":"Rob Garcia","c":"Corraine Rotoni","p":"Purchase","f":"16710604"},{"d":"2026-05-19","a":0,"o":"Jason Malmstrom","c":"Issac Sullivan","p":"Purchase","f":"16836644"},{"d":"2026-05-18","a":0,"o":"Rusty Mendoza","c":"Katelyn Jones","p":"Purchase","f":"16835621"},{"d":"2026-05-08","a":105000,"o":"Michelle Herzl","c":"Habib Sarr","p":"Refinance","f":"16766734"},{"d":"2026-05-12","a":158000,"o":"Jenny Nguyen Dinh","c":"Andy Luu","p":"Refinance","f":"16789320"},{"d":"2026-04-07","a":526500,"o":"Katie Pastor Trinidad","c":"Brittany Littrell","p":"Purchase","f":"16522888"},{"d":"2026-05-17","a":266750,"o":"Jason Malmstrom","c":"Taelor Malmstrom","p":"Purchase","f":"16823658"},{"d":"2026-05-17","a":291000,"o":"Rob Garcia","c":"Jeffry Johnstone","p":"Purchase","f":"16823352"},{"d":"2026-05-02","a":337785,"o":"Steven Lawrence","c":"Dionte Hudson","p":"Purchase","f":"16720400"},{"d":"2026-05-17","a":339500,"o":"Rob Garcia","c":"Jeff Johnstone","p":"Purchase","f":"16823474"},{"d":"2026-04-21","a":2250000,"o":"Frank Helmand","c":"Daniel Kottke","p":"Refinance","f":"16626535"},{"d":"2026-05-11","a":190000,"o":"Jason Malmstrom","c":"Matthew Hibbard","p":"Purchase","f":"16781304"},{"d":"2026-05-12","a":200000,"o":"Jay Posey","c":"Ed Tweed","p":"Purchase","f":"10751650"},{"d":"2026-05-06","a":520000,"o":"Jason Malmstrom","c":"Thomas Ruemmele","p":"Purchase","f":"16746858"},{"d":"2026-05-15","a":792000,"o":"Andre Bishop","c":"Ian Stalberg","p":"Purchase","f":"16815820"},{"d":"2026-05-15","a":180000,"o":"Michelle Herzl","c":"Mike McDonald","p":"Refinance","f":"16812892"},{"d":"2026-05-11","a":600000,"o":"Barry Willner","c":"Lawrence Hayward","p":"Purchase","f":"16785091"},{"d":"2026-05-12","a":0,"o":"Derek Sepulveda","c":"Anthony Amalfitano","p":"Purchase","f":"16795030"},{"d":"2026-04-13","a":0,"o":"Katie Pastor Trinidad","c":"StigErik McElhinney","p":"Purchase","f":"16564950"},{"d":"2026-05-04","a":423000,"o":"Rusty Mendoza","c":"Joseph Vice","p":"Purchase","f":"16728692"},{"d":"2026-05-13","a":360000,"o":"Jason Malmstrom","c":"Hans Zander","p":"Purchase","f":"10752420"},{"d":"2026-04-26","a":536750,"o":"Rusty Mendoza","c":"Veronica Wells","p":"Purchase","f":"16669710"},{"d":"2026-05-12","a":800000,"o":"Venane Brune","c":"Phillip Bonton","p":"Refinance","f":"16791574"},{"d":"2026-05-12","a":300000,"o":"Kathleen Martiniello","c":"Kevin Smith","p":"Purchase","f":"16787948"},{"d":"2026-05-01","a":342000,"o":"Rob Garcia","c":"Maria Serrano Mu\u00f1oz","p":"Purchase","f":"16714022"},{"d":"2026-04-14","a":265000,"o":"Sierra Schutte","c":"Riley Arnold","p":"Purchase","f":"16573356"},{"d":"2026-05-12","a":100000,"o":"Carter Mason","c":"Richard Boone","p":"Purchase","f":"16790072"},{"d":"2026-05-08","a":590000,"o":"Rob Garcia","c":"Blanca Castillo","p":"Purchase","f":"16767767"},{"d":"2026-05-04","a":950000,"o":"Jason Malmstrom","c":"Dustin Metz","p":"Purchase","f":"16725653"},{"d":"2026-04-23","a":75905,"o":"Russell Cunha","c":"Patrick Gentry","p":"Purchase","f":"16652111"},{"d":"2026-05-07","a":200000,"o":"Josh Sommerfield","c":"Sulakhan Singh","p":"Refinance","f":"16762713"},{"d":"2026-05-11","a":294325,"o":"Rob Garcia","c":"Mariah Campos","p":"Purchase","f":"16783160"},{"d":"2026-05-11","a":0,"o":"Dereck Bowlen","c":"KATHRYN ELLIOTT","p":"Purchase","f":"16783115"},{"d":"2026-05-11","a":552900,"o":"Rusty Mendoza","c":"Latrese King","p":"Purchase","f":"16782730"},{"d":"2026-05-11","a":280000,"o":"Nancy Kinzer","c":"Phuong Nguyen","p":"Purchase","f":"16776633"},{"d":"2026-05-11","a":400000,"o":"Michelle Paxton","c":"Stephanie Massoth","p":"Purchase","f":"10751175"},{"d":"2026-05-09","a":399900,"o":"Jason Malmstrom","c":"Curtis Papenfush","p":"Purchase","f":"16771245"},{"d":"2026-05-11","a":0,"o":"Rob Garcia","c":"Eyerusalem Makonnen","p":"Purchase","f":"16766826"},{"d":"2026-04-14","a":756500,"o":"Rob Garcia","c":"Daniella McDonagh","p":"Purchase","f":"16555709"},{"d":"2026-04-14","a":530750,"o":"Rob Garcia","c":"Mark Dano","p":"Refinance","f":"16555773"},{"d":"2026-05-08","a":280000,"o":"Rob Garcia","c":"Martin Sandoval Noriega","p":"Purchase","f":"16763050"},{"d":"2026-05-09","a":1500000,"o":"Rob Garcia","c":"Raul Arambulo Vega","p":"Refinance","f":"16771356"},{"d":"2026-04-27","a":135800,"o":"Nina Schatz Merrill","c":"Renee Ford","p":"Purchase","f":"16672169"},{"d":"2026-04-14","a":579000,"o":"Derek Sepulveda","c":"Gaspar Lopez Jr","p":"Purchase","f":"16579852"},{"d":"2026-05-08","a":612775,"o":"Rob Garcia","c":"Alicia Aradanas","p":"Refinance","f":"16768678"},{"d":"2026-05-08","a":400000,"o":"Rob Garcia","c":"Ingrin Jimenes Presa","p":"Purchase","f":"16768598"},{"d":"2026-04-14","a":710400,"o":"Rob Garcia","c":"Remilekun Awe","p":"Refinance","f":"16555777"},{"d":"2026-05-06","a":475000,"o":"Rob Garcia","c":"Daniel Granados Segura","p":"Purchase","f":"16753772"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Juan Velasquez rodriguez","p":"Purchase","f":"16768028"},{"d":"2026-05-08","a":330000,"o":"Rob Garcia","c":"Bibi Moscovici","p":"Purchase","f":"16767956"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Samone Odemijie","p":"Purchase","f":"16767916"},{"d":"2026-04-14","a":344350,"o":"Rob Garcia","c":"Rodel De Guzman","p":"Purchase","f":"16555756"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Sarah French","p":"Purchase","f":"16767597"},{"d":"2026-05-06","a":300000,"o":"Rob Garcia","c":"Lisa Rapalyea","p":"Purchase","f":"16753823"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Luis Vela","p":"Purchase","f":"16767422"},{"d":"2026-05-08","a":960000,"o":"Rob Garcia","c":"Chris Anderogba","p":"Purchase","f":"16766568"},{"d":"2026-04-23","a":144750,"o":"Jason Malmstrom","c":"Ben Mikulich","p":"Purchase","f":"16653608"},{"d":"2026-05-08","a":388000,"o":"Rob Garcia","c":"Milton Boyd","p":"Purchase","f":"16766428"},{"d":"2026-05-08","a":0,"o":"Jenny Nguyen Dinh","c":"Yen Carroll","p":"Purchase","f":"16766355"},{"d":"2026-04-14","a":422100,"o":"Rob Garcia","c":"Oscar Lopez Bautista","p":"Purchase","f":"16555767"},{"d":"2026-05-07","a":527250,"o":"Robert DeWeese","c":"Kassandra Brown","p":"Purchase","f":"16759610"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Luis Leyva","p":"Purchase","f":"16765851"},{"d":"2026-05-08","a":158175,"o":"Rob Garcia","c":"Honey Cooper","p":"Purchase","f":"16765765"},{"d":"2026-05-08","a":285000,"o":"Rob Garcia","c":"Santos Calderon lopez","p":"Purchase","f":"16765709"},{"d":"2026-05-08","a":468750,"o":"Rob Garcia","c":"Jay Vithalani","p":"Purchase","f":"16765618"},{"d":"2026-05-08","a":283500,"o":"Michelle Herzl","c":"Ana Falcon","p":"Refinance","f":"16765479"},{"d":"2026-05-08","a":335000,"o":"Rob Garcia","c":"Ismael Caldera Silva","p":"Purchase","f":"16764244"},{"d":"2026-05-08","a":335000,"o":"Rob Garcia","c":"Maria Silva Roldan","p":"Purchase","f":"16764440"},{"d":"2026-05-08","a":800000,"o":"Rob Garcia","c":"Vijay Krish","p":"Purchase","f":"16764084"},{"d":"2026-04-30","a":137000,"o":"Rob Garcia","c":"Rosa Garcia Magana","p":"Refinance","f":"16700630"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Naeem Ahmad","p":"Purchase","f":"16763978"},{"d":"2026-05-08","a":800000,"o":"Rob Garcia","c":"Marcellus Royal","p":"Purchase","f":"16763854"},{"d":"2026-05-08","a":55000,"o":"Rob Garcia","c":"David Doody","p":"Refinance","f":"16763188"},{"d":"2026-05-08","a":434250,"o":"Rob Garcia","c":"Ronnie Plotner","p":"Purchase","f":"16763621"},{"d":"2026-05-08","a":800000,"o":"Rob Garcia","c":"Charles Jin","p":"Purchase","f":"16763570"},{"d":"2026-05-08","a":0,"o":"Rob Garcia","c":"Brianna Torre raya","p":"Purchase","f":"16763545"},{"d":"2026-04-14","a":693000,"o":"Rob Garcia","c":"Jordan Declouette","p":"Refinance","f":"16555752"},{"d":"2026-04-14","a":332364,"o":"Rob Garcia","c":"Francisco Guerrero","p":"Purchase","f":"16555727"},{"d":"2026-05-08","a":500000,"o":"Rob Garcia","c":"Jessie Ann Luddy","p":"Purchase","f":"16763210"},{"d":"2026-04-12","a":485000,"o":"Rob Garcia","c":"Jason Beck","p":"Purchase","f":"16559031"},{"d":"2026-05-08","a":356250,"o":"Rob Garcia","c":"Pascual Treminio cinco","p":"Purchase","f":"16763143"},{"d":"2026-05-08","a":315000,"o":"Rob Garcia","c":"Arlette Arceo","p":"Purchase","f":"16763116"},{"d":"2026-05-08","a":427500,"o":"Rob Garcia","c":"Maria Arceo","p":"Refinance","f":"16763115"},{"d":"2026-04-30","a":942000,"o":"Rob Garcia","c":"Maria Sandoval","p":"Refinance","f":"16700628"},{"d":"2026-05-08","a":450000,"o":"Rob Garcia","c":"Kristen Sandoval","p":"Purchase","f":"16763046"},{"d":"2026-05-06","a":142500,"o":"Rob Garcia","c":"Alfonso Sandoval Hernandez","p":"Purchase","f":"16753822"},{"d":"2026-05-08","a":400000,"o":"Rob Garcia","c":"Tony Sandoval","p":"Purchase","f":"16763049"},{"d":"2026-05-08","a":479200,"o":"Rob Garcia","c":"Adrian Sandoval","p":"Purchase","f":"16763048"},{"d":"2026-05-08","a":241250,"o":"Rob Garcia","c":"Nicholas Sandoval","p":"Purchase","f":"16763047"},{"d":"2026-05-08","a":475000,"o":"Rob Garcia","c":"Niccolas Sandoval","p":"Purchase","f":"16763028"},{"d":"2026-05-07","a":348000,"o":"Katie Pastor Trinidad","c":"Richard Spring","p":"Purchase","f":"16762450"},{"d":"2026-05-07","a":400000,"o":"Rob Garcia","c":"Sydnie McGann","p":"Refinance","f":"16762686"},{"d":"2026-05-07","a":320100,"o":"Rob Garcia","c":"Gabriel Rodriguez Espinoza","p":"Purchase","f":"16762676"},{"d":"2026-05-07","a":0,"o":"Rob Garcia","c":"Tito Garcia","p":"Purchase","f":"16762672"},{"d":"2026-04-14","a":456000,"o":"Rob Garcia","c":"Stanislav Jabuka","p":"Refinance","f":"16555750"},{"d":"2026-05-06","a":0,"o":"Katie Pastor Trinidad","c":"Rick Spring","p":"Purchase","f":"16751063"},{"d":"2026-05-04","a":725000,"o":"Katie Pastor Trinidad","c":"Nicole Khalsa","p":"Purchase","f":"16732142"},{"d":"2026-04-29","a":289500,"o":"Bobby Afrasiabi","c":"Shoeleh Jahanmirfirooz","p":"Purchase","f":"16699522"},{"d":"2026-05-07","a":436500,"o":"Rob Garcia","c":"Sergio Vargas","p":"Purchase","f":"16755731"},{"d":"2026-05-06","a":400000,"o":"Rob Garcia","c":"Antonio Barajas","p":"Purchase","f":"16753824"},{"d":"2026-05-06","a":360000,"o":"Rob Garcia","c":"Ruth Beach","p":"Purchase","f":"16753826"},{"d":"2026-05-06","a":261250,"o":"Rob Garcia","c":"Jenisa Gabriel","p":"Purchase","f":"16753821"},{"d":"2026-05-06","a":320100,"o":"Rob Garcia","c":"Omar Sanchez","p":"Purchase","f":"16753792"},{"d":"2026-05-06","a":525000,"o":"Rob Garcia","c":"Michael Vines","p":"Purchase","f":"16753788"},{"d":"2026-05-06","a":279000,"o":"Rob Garcia","c":"Michelle Meza","p":"Purchase","f":"16753787"},{"d":"2026-05-06","a":180000,"o":"Rob Garcia","c":"Antonio Quiroz","p":"Purchase","f":"16753790"},{"d":"2026-05-06","a":800000,"o":"Rob Garcia","c":"Chun Suen","p":"Purchase","f":"16753789"},{"d":"2026-05-06","a":560000,"o":"Rob Garcia","c":"Ivy Tran","p":"Purchase","f":"16753791"},{"d":"2026-05-06","a":275000,"o":"Rob Garcia","c":"Alexandra Alvarado","p":"Purchase","f":"16753793"},{"d":"2026-05-06","a":300000,"o":"Rob Garcia","c":"Kristi Pearson","p":"Purchase","f":"16753773"},{"d":"2026-05-06","a":212300,"o":"Rob Garcia","c":"Maricruz Hernandez","p":"Purchase","f":"16753761"},{"d":"2026-05-06","a":256000,"o":"Rob Garcia","c":"Elnora Abenes","p":"Purchase","f":"16753760"},{"d":"2026-05-06","a":806500,"o":"Rob Garcia","c":"Aye Su Hlaing","p":"Purchase","f":"16753745"},{"d":"2026-05-06","a":400000,"o":"Rob Garcia","c":"Viridiana Aguiniga","p":"Purchase","f":"16753742"},{"d":"2026-05-06","a":300000,"o":"Rob Garcia","c":"Amanda Gotch","p":"Purchase","f":"16753737"},{"d":"2026-05-06","a":315000,"o":"Rob Garcia","c":"Carmen Calderon","p":"Purchase","f":"16753724"},{"d":"2026-05-06","a":400000,"o":"Rob Garcia","c":"Carlos Navarro","p":"Refinance","f":"16753702"},{"d":"2026-05-06","a":620000,"o":"Rob Garcia","c":"Janice Chan","p":"Purchase","f":"16753695"},{"d":"2026-05-06","a":697500,"o":"Rob Garcia","c":"Edwin Lee","p":"Purchase","f":"16753678"},{"d":"2026-05-06","a":241250,"o":"Rob Garcia","c":"Melody Dominguez","p":"Purchase","f":"16753667"},{"d":"2026-05-06","a":339500,"o":"Rob Garcia","c":"Rafaela Orosco ruiz","p":"Purchase","f":"16752732"},{"d":"2026-05-06","a":0,"o":"Leif Potter","c":"Tam Lecong","p":"Refinance","f":"16752968"},{"d":"2026-05-06","a":308800,"o":"Rob Garcia","c":"Anthony Brown","p":"Refinance","f":"16752351"},{"d":"2026-05-06","a":229500,"o":"Rob Garcia","c":"Timothy Tanzi","p":"Purchase","f":"16752188"},{"d":"2026-05-06","a":419775,"o":"Rob Garcia","c":"Rosalita Tahod","p":"Purchase","f":"16751926"},{"d":"2026-05-06","a":388000,"o":"Rob Garcia","c":"Samuel Ortiz","p":"Purchase","f":"16751822"},{"d":"2026-05-06","a":340000,"o":"Jason Malmstrom","c":"Sam Pressman","p":"Refinance","f":"10748862"},{"d":"2026-04-11","a":386000,"o":"Katie Pastor Trinidad","c":"Jose Pulido-Gaona","p":"Purchase","f":"16552480"},{"d":"2026-04-29","a":525000,"o":"Katie Pastor Trinidad","c":"George Thibault","p":"Purchase","f":"16700227"},{"d":"2026-05-06","a":366700,"o":"Rob Garcia","c":"John Gardea","p":"Purchase","f":"16745546"},{"d":"2026-05-06","a":390000,"o":"Rob Garcia","c":"Ricky Feng","p":"Purchase","f":"16745120"},{"d":"2026-05-06","a":169840,"o":"Rob Garcia","c":"Matthew Edwards","p":"Purchase","f":"16745367"},{"d":"2026-05-06","a":260000,"o":"Rob Garcia","c":"Lakresha Washington","p":"Purchase","f":"16745204"},{"d":"2026-04-14","a":375000,"o":"Rob Garcia","c":"Daly Sebastian","p":"Refinance","f":"16555698"},{"d":"2026-05-01","a":330000,"o":"Rob Garcia","c":"Jesus Torres","p":"Refinance","f":"16709748"},{"d":"2026-05-05","a":337750,"o":"Rob Garcia","c":"Vanessa Martinez","p":"Purchase","f":"16743605"},{"d":"2026-04-25","a":285000,"o":"Leif Potter","c":"Christina Cervantez","p":"Purchase","f":"16665564"},{"d":"2026-05-05","a":325000,"o":"Matthew Von Bergen","c":"Ray Miles","p":"Refinance","f":"16741929"},{"d":"2026-04-23","a":1011500,"o":"Katie Pastor Trinidad","c":"Kevan Litz","p":"Purchase","f":"16655658"},{"d":"2026-04-14","a":100000,"o":"Barry Willner","c":"Daniel Santiago hernandez","p":"Refinance","f":"16574799"},{"d":"2026-04-26","a":832750,"o":"Rob Garcia","c":"Aude Bouissou","p":"Purchase","f":"16667773"},{"d":"2026-04-21","a":1249000,"o":"Dave Miller","c":"Misty Elmore","p":"Purchase","f":"16621969"},{"d":"2026-05-04","a":925000,"o":"Jason Malmstrom","c":"Dustin Metz","p":"Purchase","f":"10746571"},{"d":"2026-04-20","a":853600,"o":"Rob Garcia","c":"Roberto Velasquez Tovar","p":"Purchase","f":"16617358"},{"d":"2026-05-03","a":0,"o":"Leif Potter","c":"Kevin Bell","p":"Purchase","f":"16723247"},{"d":"2026-04-23","a":0,"o":"Jason Malmstrom","c":"Brock Carlson","p":"Purchase","f":"16653657"},{"d":"2026-04-14","a":356250,"o":"Jason Malmstrom","c":"Jacob Lawson","p":"Purchase","f":"16567891"},{"d":"2026-04-07","a":1200000,"o":"Matthew Von Bergen","c":"Mengzhen Su","p":"Purchase","f":"16520576"},{"d":"2026-04-09","a":750000,"o":"Dereck Bowlen","c":"Isaac Conde","p":"Purchase","f":"16541227"},{"d":"2026-04-23","a":384750,"o":"Katie Pastor Trinidad","c":"Rita Gribbon","p":"Purchase","f":"16650891"},{"d":"2026-04-26","a":267750,"o":"Katie Pastor Trinidad","c":"Victoria Schleicher","p":"Purchase","f":"16669246"},{"d":"2026-04-30","a":439200,"o":"Matt Perez","c":"Hayley Mc Cluskey","p":"Purchase","f":"16703820"},{"d":"2026-04-10","a":2000000,"o":"Dereck Bowlen","c":"Kathryn Curtis","p":"Purchase","f":"16552002"},{"d":"2026-04-13","a":774000,"o":"Katie Pastor Trinidad","c":"Tiffany Bowman","p":"Purchase","f":"16563387"},{"d":"2026-04-17","a":350000,"o":"Katie Pastor Trinidad","c":"Richard Spring","p":"Purchase","f":"16607726"},{"d":"2026-04-20","a":390000,"o":"Katie Pastor Trinidad","c":"Delmacio Rara","p":"Purchase","f":"16618954"},{"d":"2026-04-17","a":350000,"o":"Sierra Schutte","c":"Kiersten Gray","p":"Purchase","f":"16607536"},{"d":"2026-04-19","a":725000,"o":"Katie Pastor Trinidad","c":"Kristina Kountouris","p":"Purchase","f":"16612487"},{"d":"2026-04-29","a":299000,"o":"Katie Pastor Trinidad","c":"Yolanda Burrows","p":"Purchase","f":"16697855"},{"d":"2026-05-01","a":114000,"o":"Michelle Paxton","c":"Kyle Waugh","p":"Refinance","f":"16711357"},{"d":"2026-04-18","a":405000,"o":"Sierra Schutte","c":"lori morales","p":"Purchase","f":"16611189"},{"d":"2026-04-07","a":209000,"o":"Carter Mason","c":"Leslie Clausen","p":"Purchase","f":"16523255"},{"d":"2026-04-15","a":225000,"o":"Sierra Schutte","c":"Jordan Hoadley","p":"Refinance","f":"16590127"},{"d":"2026-04-27","a":337000,"o":"Katie Pastor Trinidad","c":"Brandon Sharpe","p":"Purchase","f":"16680569"},{"d":"2026-04-10","a":400000,"o":"Dereck Bowlen","c":"Kimberly Greene","p":"Purchase","f":"16550898"},{"d":"2026-04-17","a":170000,"o":"Katie Pastor Trinidad","c":"Anthony Lewandowski","p":"Purchase","f":"16608374"},{"d":"2026-04-24","a":400000,"o":"Leif Potter","c":"Karen Coppock","p":"Refinance","f":"16662070"},{"d":"2026-04-21","a":0,"o":"Jenny Nguyen Dinh","c":"Cong Ngo","p":"Refinance","f":"16634154"},{"d":"2026-05-02","a":96999,"o":"Russell Cunha","c":"Ricardo Juarez","p":"Purchase","f":"16718841"},{"d":"2026-05-01","a":485000,"o":"Rob Garcia","c":"Daniel Uribe","p":"Purchase","f":"16716378"},{"d":"2026-04-23","a":300000,"o":"Rusty Mendoza","c":"Jennifer Roberts","p":"Purchase","f":"16654825"},{"d":"2026-04-20","a":384341,"o":"Rusty Mendoza","c":"Christopher Henderson","p":"Purchase","f":"16621299"},{"d":"2026-04-30","a":350000,"o":"Ryan Ross","c":"Sarah Mcmanus","p":"Purchase","f":"16709413"},{"d":"2026-04-23","a":50000,"o":"Sierra Schutte","c":"Ruth Brungardt","p":"Refinance","f":"16654736"},{"d":"2026-04-25","a":270000,"o":"Rob Garcia","c":"Kristen Smith","p":"Purchase","f":"16665038"},{"d":"2026-04-30","a":264000,"o":"Rob Garcia","c":"Max Carter","p":"Refinance","f":"16700627"},{"d":"2026-05-01","a":285000,"o":"Rob Garcia","c":"Valentin Garcia Ambriz","p":"Refinance","f":"16709969"},{"d":"2026-04-30","a":350000,"o":"Rob Garcia","c":"Deanna Declouette-Sellers","p":"Refinance","f":"16700624"},{"d":"2026-05-01","a":727500,"o":"Rob Garcia","c":"Jessica Flores-Ramirez","p":"Purchase","f":"16709670"},{"d":"2026-04-14","a":475000,"o":"Rob Garcia","c":"Jessica Caballero","p":"Refinance","f":"16555742"},{"d":"2026-04-30","a":750500,"o":"Nancy Kinzer","c":"Fredy Rodriguez Lopez","p":"Purchase","f":"16703434"},{"d":"2026-04-30","a":122409,"o":"Rusty Mendoza","c":"Ruth Gitiha","p":"Purchase","f":"16704254"},{"d":"2026-04-30","a":800000,"o":"Dave Miller","c":"Vince Tanzi","p":"Purchase","f":"16703803"},{"d":"2026-04-30","a":441000,"o":"Bobby Afrasiabi","c":"Stanley Okpara","p":"Purchase","f":"16702581"},{"d":"2026-04-30","a":685000,"o":"Rob Garcia","c":"Jasmin Konkic","p":"Refinance","f":"16700616"},{"d":"2026-04-30","a":0,"o":"Rob Garcia","c":"Andres Prado","p":"Purchase","f":"10745346"},{"d":"2026-04-30","a":400000,"o":"Rob Garcia","c":"Francisco Copado","p":"Purchase","f":"16700643"},{"d":"2026-04-30","a":340000,"o":"Rob Garcia","c":"Francisco Copado","p":"Refinance","f":"16700640"},{"d":"2026-04-30","a":190000,"o":"Rob Garcia","c":"Senija Krajnic","p":"Refinance","f":"16700638"},{"d":"2026-04-30","a":445000,"o":"Rob Garcia","c":"Jennifer Villarreal","p":"Refinance","f":"16700633"},{"d":"2026-04-14","a":193000,"o":"Rob Garcia","c":"Senija Krajnic","p":"Purchase","f":"16555737"},{"d":"2026-04-30","a":732000,"o":"Rob Garcia","c":"Phong Trinh","p":"Refinance","f":"16700636"},{"d":"2026-04-30","a":300000,"o":"Rob Garcia","c":"Mai Lo","p":"Refinance","f":"16700637"},{"d":"2026-04-30","a":425000,"o":"Rob Garcia","c":"Kimberly Ward","p":"Refinance","f":"16700632"},{"d":"2026-04-30","a":360000,"o":"Rob Garcia","c":"Maurice Underwood","p":"Refinance","f":"16700634"},{"d":"2026-04-30","a":570000,"o":"Rob Garcia","c":"Olha Tokalenko","p":"Refinance","f":"16700635"},{"d":"2026-04-14","a":309900,"o":"Rob Garcia","c":"Mai Lo","p":"Purchase","f":"16555732"},{"d":"2026-04-30","a":135000,"o":"Rob Garcia","c":"Robin Tejada","p":"Refinance","f":"16700631"},{"d":"2026-04-30","a":373000,"o":"Rob Garcia","c":"Juana Piedra Orozco","p":"Refinance","f":"16700629"},{"d":"2026-04-14","a":570000,"o":"Rob Garcia","c":"Olha Tokalenko","p":"Refinance","f":"16555687"},{"d":"2026-04-14","a":360000,"o":"Rob Garcia","c":"Maurice Underwood","p":"Refinance","f":"16555688"},{"d":"2026-04-14","a":445000,"o":"Rob Garcia","c":"Jennifer Villarreal","p":"Refinance","f":"16555690"},{"d":"2026-04-14","a":425000,"o":"Rob Garcia","c":"Kimberly Ward","p":"Refinance","f":"16555691"},{"d":"2026-04-14","a":135000,"o":"Rob Garcia","c":"Robin Tejada","p":"Refinance","f":"16555696"},{"d":"2026-04-30","a":150000,"o":"Rob Garcia","c":"Benjamin Liu","p":"Refinance","f":"16700621"},{"d":"2026-04-30","a":312800,"o":"Rob Garcia","c":"Charlsa Satterfield","p":"Refinance","f":"16700618"},{"d":"2026-04-30","a":446500,"o":"Rob Garcia","c":"Moses Gaitan","p":"Refinance","f":"16700619"},{"d":"2026-04-30","a":490000,"o":"Rob Garcia","c":"Rinku Kaul","p":"Refinance","f":"16700614"},{"d":"2026-04-30","a":218500,"o":"Rob Garcia","c":"Alisia Meza","p":"Refinance","f":"16700610"},{"d":"2026-04-30","a":375000,"o":"Rob Garcia","c":"Michael Fisher","p":"Refinance","f":"16700613"},{"d":"2026-04-30","a":350000,"o":"Rob Garcia","c":"Richard Carreon","p":"Refinance","f":"16700611"},{"d":"2026-04-30","a":618750,"o":"Rob Garcia","c":"Mario Lima","p":"Refinance","f":"16700608"},{"d":"2026-04-30","a":580000,"o":"Rob Garcia","c":"Matthew Hughes","p":"Refinance","f":"16700606"},{"d":"2026-04-08","a":450000,"o":"Shazia Dar","c":"Arham BagasrawalA","p":"Purchase","f":"16530320"},{"d":"2026-04-22","a":400000,"o":"Matthew Von Bergen","c":"Tammy Del Rio","p":"Purchase","f":"16641719"},{"d":"2026-04-21","a":1500000,"o":"Elvin Estela","c":"DoanNhi Dona Le","p":"Purchase","f":"16632265"},{"d":"2026-04-29","a":50000,"o":"Matthew Von Bergen","c":"Dionisia Inocencio","p":"Refinance","f":"16694674"},{"d":"2026-04-20","a":194000,"o":"Craig Warn","c":"Nicholas Hall","p":"Purchase","f":"16623899"},{"d":"2026-04-15","a":209000,"o":"Craig Warn","c":"Derek Shaves","p":"Purchase","f":"16583542"},{"d":"2026-04-26","a":1225000,"o":"Frank Helmand","c":"Ghulam Helmand","p":"Refinance","f":"16670205"},{"d":"2026-04-12","a":960000,"o":"Rob Garcia","c":"Aude Bouissou","p":"Purchase","f":"16557764"},{"d":"2026-04-20","a":832745,"o":"Rusty Mendoza","c":"Claresse Anne Alvis","p":"Purchase","f":"16626369"},{"d":"2026-04-22","a":400000,"o":"Rusty Mendoza","c":"MOHAMMAD Anwar PANJDANI","p":"Purchase","f":"16640150"},{"d":"2026-04-21","a":0,"o":"Rusty Mendoza","c":"Evie Moa","p":"Purchase","f":"16626544"},{"d":"2026-04-08","a":2925000,"o":"Jeffrey Glass","c":"Matthew Hertz","p":"Purchase","f":"16529692"},{"d":"2026-04-22","a":450000,"o":"Rob Garcia","c":"Sandra Severns","p":"Purchase","f":"16640464"},{"d":"2026-04-16","a":1960000,"o":"Greg Choinski","c":"Brendan Kling","p":"Purchase","f":"16617060"},{"d":"2026-04-22","a":280000,"o":"Rusty Mendoza","c":"Yasmin Reyes","p":"Purchase","f":"16621413"},{"d":"2026-04-21","a":750000,"o":"Shazia Dar","c":"Navdeep Nara","p":"Purchase","f":"16633019"},{"d":"2026-04-11","a":284050,"o":"Rob Garcia","c":"Vanessa Hernandez Aguirre","p":"Purchase","f":"16555377"},{"d":"2026-04-11","a":190000,"o":"Rob Garcia","c":"Jorge Hernandez Avendano","p":"Purchase","f":"16555420"},{"d":"2026-04-14","a":256690,"o":"Rob Garcia","c":"Tracy Wilson","p":"Purchase","f":"16555686"},{"d":"2026-04-14","a":365750,"o":"Rob Garcia","c":"Benita Villegas","p":"Purchase","f":"16555684"},{"d":"2026-04-11","a":135000,"o":"Rob Garcia","c":"Jorge Acevedo","p":"Purchase","f":"16555464"},{"d":"2026-04-14","a":190000,"o":"Rob Garcia","c":"Seana Marie Soth","p":"Purchase","f":"16555695"},{"d":"2026-04-14","a":621500,"o":"Rob Garcia","c":"Mostafa Tazarv","p":"Purchase","f":"16555692"},{"d":"2026-04-14","a":340100,"o":"Rob Garcia","c":"Noel Zazueta","p":"Purchase","f":"16555693"},{"d":"2026-04-14","a":440000,"o":"Rob Garcia","c":"Melanie Telles Robles","p":"Purchase","f":"16555689"},{"d":"2026-04-14","a":368000,"o":"Rob Garcia","c":"Gurjit Singh","p":"Purchase","f":"16555694"},{"d":"2026-04-14","a":323275,"o":"Rob Garcia","c":"Jocelyn Semien-Gray","p":"Purchase","f":"16555700"},{"d":"2026-04-14","a":315760,"o":"Rob Garcia","c":"Robert Sandoval","p":"Purchase","f":"16555699"},{"d":"2026-04-14","a":254000,"o":"Rob Garcia","c":"Alexander Stevenson","p":"Purchase","f":"16555697"},{"d":"2026-04-14","a":221950,"o":"Rob Garcia","c":"Jerri Shook","p":"Purchase","f":"16555702"},{"d":"2026-04-14","a":718000,"o":"Rob Garcia","c":"Cindy Siu","p":"Purchase","f":"16555701"},{"d":"2026-04-14","a":537000,"o":"Rob Garcia","c":"Justin Khansouvong","p":"Purchase","f":"16555707"},{"d":"2026-04-14","a":180000,"o":"Rob Garcia","c":"Lawrence Parnell","p":"Purchase","f":"16555705"},{"d":"2026-04-14","a":338640,"o":"Rob Garcia","c":"Anthony Satterfield","p":"Purchase","f":"16555704"},{"d":"2026-04-14","a":451250,"o":"Rob Garcia","c":"Maria Rodriguez Valdez","p":"Purchase","f":"16555703"},{"d":"2026-04-14","a":399712,"o":"Rob Garcia","c":"Desree Molina","p":"Purchase","f":"16555710"},{"d":"2026-04-14","a":726200,"o":"Rob Garcia","c":"Kirsten Lim","p":"Purchase","f":"16555713"},{"d":"2026-04-14","a":299250,"o":"Rob Garcia","c":"Vanessa Hernandez Aguirre","p":"Purchase","f":"16555717"},{"d":"2026-04-14","a":417003,"o":"Rob Garcia","c":"Perla Llanes","p":"Purchase","f":"16555716"},{"d":"2026-04-14","a":1141950,"o":"Rob Garcia","c":"Robert Earwicker","p":"Purchase","f":"16555711"},{"d":"2026-04-14","a":308000,"o":"Rob Garcia","c":"Harry Sellers","p":"Purchase","f":"16555714"},{"d":"2026-04-14","a":922500,"o":"Rob Garcia","c":"Portia Oviso","p":"Purchase","f":"16555721"},{"d":"2026-04-14","a":219000,"o":"Rob Garcia","c":"Natividad Martinez","p":"Purchase","f":"16555720"},{"d":"2026-04-14","a":479750,"o":"Rob Garcia","c":"Jerome Sinocruz","p":"Purchase","f":"16555719"},{"d":"2026-04-14","a":232000,"o":"Rob Garcia","c":"Claudio Robles","p":"Purchase","f":"16555718"},{"d":"2026-04-14","a":155200,"o":"Rob Garcia","c":"Sean O'Neill","p":"Purchase","f":"16555722"},{"d":"2026-04-14","a":320000,"o":"Rob Garcia","c":"Mathew Davis","p":"Purchase","f":"16555726"},{"d":"2026-04-14","a":375250,"o":"Rob Garcia","c":"Violeta Hernandez","p":"Purchase","f":"16555725"},{"d":"2026-04-14","a":412000,"o":"Rob Garcia","c":"Caitlin Nguyen","p":"Purchase","f":"16555730"},{"d":"2026-04-14","a":492150,"o":"Rob Garcia","c":"Vanessa Carrillo","p":"Purchase","f":"16555729"},{"d":"2026-04-14","a":280330,"o":"Rob Garcia","c":"Tammra McDonald","p":"Purchase","f":"16555736"},{"d":"2026-04-14","a":200000,"o":"Rob Garcia","c":"Jim Hague","p":"Purchase","f":"16555735"},{"d":"2026-04-14","a":680000,"o":"Rob Garcia","c":"Alexis Lee","p":"Purchase","f":"16555740"},{"d":"2026-04-14","a":240000,"o":"Rob Garcia","c":"Jonatan Morales Marroquin","p":"Purchase","f":"16555738"},{"d":"2026-04-14","a":364000,"o":"Rob Garcia","c":"Brian Huizar Esparza","p":"Purchase","f":"16555744"},{"d":"2026-04-14","a":308800,"o":"Rob Garcia","c":"Henry Becerra","p":"Purchase","f":"16555741"},{"d":"2026-04-14","a":546250,"o":"Rob Garcia","c":"Sydney Hutt","p":"Purchase","f":"16555746"},{"d":"2026-04-14","a":540000,"o":"Rob Garcia","c":"Morton Marley","p":"Purchase","f":"16555747"},{"d":"2026-04-14","a":639230,"o":"Rob Garcia","c":"John Michael Arimas","p":"Purchase","f":"16555751"},{"d":"2026-04-14","a":135000,"o":"Rob Garcia","c":"Jorge Acevedo","p":"Purchase","f":"16555755"},{"d":"2026-04-14","a":290465,"o":"Rob Garcia","c":"Alexander Ehler","p":"Purchase","f":"16555753"},{"d":"2026-04-14","a":241250,"o":"Rob Garcia","c":"Menachem Fernandez","p":"Purchase","f":"16555754"},{"d":"2026-04-14","a":522000,"o":"Rob Garcia","c":"Aaliyah Gomez","p":"Purchase","f":"16555761"},{"d":"2026-04-14","a":641250,"o":"Rob Garcia","c":"Charles Daroy","p":"Purchase","f":"16555758"},{"d":"2026-04-14","a":304000,"o":"Rob Garcia","c":"Bryan Hernandez","p":"Purchase","f":"16555765"},{"d":"2026-04-14","a":446200,"o":"Rob Garcia","c":"Marcaleyene Binkley","p":"Purchase","f":"16555766"},{"d":"2026-04-14","a":329600,"o":"Rob Garcia","c":"Juan Juarez Garcia","p":"Purchase","f":"16555768"},{"d":"2026-04-14","a":427500,"o":"Rob Garcia","c":"Mohammad Azeim","p":"Purchase","f":"16555770"},{"d":"2026-04-14","a":459000,"o":"Rob Garcia","c":"Carlos Campos","p":"Purchase","f":"16555769"},{"d":"2026-04-14","a":456000,"o":"Rob Garcia","c":"Sallee Her","p":"Purchase","f":"16555771"},{"d":"2026-04-14","a":441000,"o":"Rob Garcia","c":"Lorely Davila","p":"Purchase","f":"16555774"},{"d":"2026-04-14","a":396615,"o":"Rob Garcia","c":"Maricela Marquez","p":"Purchase","f":"16555775"},{"d":"2026-04-17","a":200000,"o":"Carter Mason","c":"Theodore Kalamatas","p":"Purchase","f":"16604115"},{"d":"2026-04-21","a":300000,"o":"Frank Helmand","c":"Edward Bethune","p":"Purchase","f":"16629903"},{"d":"2026-04-18","a":495000,"o":"Rusty Mendoza","c":"Nicholas Stine","p":"Purchase","f":"16609208"},{"d":"2026-04-20","a":0,"o":"Rob Garcia","c":"Miroslava Ruiz","p":"Purchase","f":"10740767"},{"d":"2026-04-20","a":295000,"o":"Rusty Mendoza","c":"Nely Escalante","p":"Purchase","f":"16619522"},{"d":"2026-04-20","a":0,"o":"Rusty Mendoza","c":"Chelsea Cano","p":"Purchase","f":"16618845"},{"d":"2026-04-12","a":250000,"o":"Rob Garcia","c":"Aaron Hern","p":"Purchase","f":"16557427"},{"d":"2026-04-18","a":300000,"o":"Rob Garcia","c":"David Ayala","p":"Refinance","f":"16611692"},{"d":"2026-04-18","a":220000,"o":"Rob Garcia","c":"Gladis Alvarez Ortiz","p":"Refinance","f":"16611519"},{"d":"2026-04-18","a":395000,"o":"Rob Garcia","c":"Jorge Martinez","p":"Refinance","f":"16611272"},{"d":"2026-04-18","a":490000,"o":"Rob Garcia","c":"Jenny Patacsil","p":"Refinance","f":"16611322"},{"d":"2026-04-17","a":760000,"o":"Michelle Paxton","c":"ALEX MADEROS","p":"Refinance","f":"10738252"},{"d":"2026-04-17","a":250000,"o":"Michelle Paxton","c":"MARTY PAPPAS","p":"Refinance","f":"10738187"},{"d":"2026-04-09","a":465500,"o":"Rob Garcia","c":"Latrice Reed","p":"Purchase","f":"16534828"},{"d":"2026-04-16","a":380000,"o":"Michelle Paxton","c":"DARRA Brown","p":"Purchase","f":"10734071"},{"d":"2026-04-10","a":388000,"o":"Rob Garcia","c":"Zaira Castro","p":"Purchase","f":"16548061"},{"d":"2026-04-15","a":160000,"o":"Rob Garcia","c":"Yuridia Martinez","p":"Purchase","f":"16581058"},{"d":"2026-04-14","a":400000,"o":"Rob Garcia","c":"Robert Reilly","p":"Purchase","f":"16555734"},{"d":"2026-04-13","a":939000,"o":"Sean McDonough","c":"Rene Rodriguez","p":"Purchase","f":"16564092"},{"d":"2026-04-12","a":3750000,"o":"Rob Garcia","c":"Branislav Vajdic","p":"Purchase","f":"16559019"},{"d":"2026-04-12","a":800000,"o":"Rob Garcia","c":"Travis Loper","p":"Purchase","f":"16558957"},{"d":"2026-04-12","a":485000,"o":"Rob Garcia","c":"Melissa Vargas","p":"Purchase","f":"16558761"},{"d":"2026-04-12","a":485000,"o":"Rob Garcia","c":"Saul Cabrales","p":"Purchase","f":"16558719"},{"d":"2026-04-12","a":1200000,"o":"Rob Garcia","c":"Subodh Madiwale","p":"Refinance","f":"16558552"},{"d":"2026-04-12","a":360000,"o":"Rob Garcia","c":"Gerardo Lopez","p":"Purchase","f":"16558554"},{"d":"2026-04-12","a":150000,"o":"Rob Garcia","c":"Pedro Morales Padilla","p":"Purchase","f":"16558332"},{"d":"2026-04-12","a":850000,"o":"Rob Garcia","c":"Christina Ponce","p":"Purchase","f":"16558257"},{"d":"2026-04-12","a":950000,"o":"Rob Garcia","c":"Cesar Rodriguez","p":"Purchase","f":"16558167"},{"d":"2026-04-12","a":350000,"o":"Rob Garcia","c":"Samantha Lui","p":"Purchase","f":"16558149"},{"d":"2026-04-12","a":850000,"o":"Rob Garcia","c":"Joshua Lu","p":"Purchase","f":"16558119"},{"d":"2026-04-12","a":700000,"o":"Rob Garcia","c":"Thach La","p":"Purchase","f":"16558079"},{"d":"2026-04-12","a":1120000,"o":"Rob Garcia","c":"Lisa Tran","p":"Purchase","f":"16558026"},{"d":"2026-04-12","a":400000,"o":"Rob Garcia","c":"Irvin Benally","p":"Purchase","f":"16558005"},{"d":"2026-04-12","a":1100000,"o":"Rob Garcia","c":"Sang Vo","p":"Purchase","f":"16557743"},{"d":"2026-04-12","a":30000,"o":"Rob Garcia","c":"Betty Clark","p":"Purchase","f":"16557545"},{"d":"2026-04-12","a":250000,"o":"Rob Garcia","c":"Brian Hill","p":"Purchase","f":"16557497"},{"d":"2026-04-12","a":470000,"o":"Rob Garcia","c":"Eric Lomeli","p":"Purchase","f":"16556747"},{"d":"2026-04-09","a":270630,"o":"Russell Cunha","c":"James Harthcock","p":"Purchase","f":"16541601"},{"d":"2026-04-10","a":0,"o":"Michelle Paxton","c":"SHRUTHI VENKATESH","p":"Purchase","f":"10727250"}];
+const HISTORICAL_LEADS_VERSION = 'leads-ytd-2026-06-26-912'; // bump to force refresh
+
+function loadHistoricalLeads(){
+  if(!HISTORICAL_LEADS || !HISTORICAL_LEADS.length) return;
+  const savedV = localStorage.getItem('historicalLeadsVersion');
+  // Months covered by the embedded set
+  const embeddedMonths = new Set(HISTORICAL_LEADS.map(x => x.d.slice(0,7)));
+  if(savedV !== HISTORICAL_LEADS_VERSION){
+    // Version changed — clear embedded months so fresh seed loads (uploads for those months will re-add)
+    embeddedMonths.forEach(m => { delete currentData.monthlyLeads[m]; });
+    localStorage.setItem('historicalLeadsVersion', HISTORICAL_LEADS_VERSION);
+  }
+  // Only seed months that have no lead data yet (a real upload always wins)
+  const byMonth = {};
+  HISTORICAL_LEADS.forEach(x => {
+    const m = x.d.slice(0,7);
+    if(currentData.monthlyLeads[m] && currentData.monthlyLeads[m].length) return; // keep existing
+    const lead = {
+      leadDate: x.d, loanAmount: x.a, owner: x.o, clientName: x.c,
+      loanPurpose: x.p, losFileName: x.f, leadId: '', loName: x.o
+    };
+    // Apply credit rule (David/Rachael never producer)
+    if(isNonProducer(lead.loName)){
+      const credited = resolveCredit(lead);
+      if(credited === null){
+        const key = (lead.clientName || lead.losFileName || '').toString().toLowerCase();
+        if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key] = {clientName:lead.clientName, loanId:lead.losFileName, loanAmount:lead.loanAmount, loName:lead.loName};
+        lead.loName = 'Unassigned (needs review)';
+      } else lead.loName = credited;
+    }
+    (byMonth[m] = byMonth[m] || []).push(lead);
+  });
+  Object.entries(byMonth).forEach(([m, arr]) => { currentData.monthlyLeads[m] = arr; });
+  if(Object.keys(byMonth).length){
+    if(!currentData.leadsUpdatedAt) currentData.leadsUpdatedAt = 1; // baseline so any real upload beats it
+    if(Object.keys(PENDING_CREDIT).length && typeof scheduleCreditPrompt === 'function') scheduleCreditPrompt();
+    console.log('Embedded leads seeded:', HISTORICAL_LEADS.length, 'across', Object.keys(byMonth).length, 'months');
+  }
+}
+
 // Sample data
 const partnersProductionData = [
   { fundingDate:'2026-04-01', loanAmount:595000, loName:'Katie Pastor Trinidad', clientName:'Anderson', loanPurpose:'Purchase', loanId:'16890123' },
@@ -1800,8 +2013,9 @@ currentData.production = [...partnersProductionData];
 const viewMeta = {
   dashboard: { label:'Dashboard', title:'Production Dashboard', nav:0 },
   pipeline: { label:'Pipeline', title:'Pipeline & Locks', nav:1 },
-  reports: { label:'Analytics', title:'Reports & Analytics', nav:2 },
-  executive: { label:'Executive', title:'Executive Dashboard', nav:5 },
+  leads: { label:'Leads', title:'Leads', nav:2 },
+  reports: { label:'Analytics', title:'Reports & Analytics', nav:3 },
+  executive: { label:'Executive', title:'Executive Dashboard', nav:6 },
   uploadView: { label:'Upload', title:'Data Upload Center', nav:-1 }
 };
 
@@ -1824,6 +2038,7 @@ function showView(id) {
   }
 
   if (id === 'uploadView') { resetUpload(); initUploadDragDrop(); initScreenshotDropZone(); updateMonthlyManager(); }
+  if (id === 'leads') { try { updateLeadsView(); } catch(e){ console.warn('Leads view:', e); } }
 }
 
 // Legacy
@@ -2011,6 +2226,73 @@ async function saveCreditAssignments(){
   }
 }
 
+// ── Leif Potter referral confirmation prompt ──
+function showLeifPrompt(){
+  const pending = Object.values(LEIF_PENDING).filter(p => !currentData.leifDecisions[p.key]);
+  if(pending.length === 0) return;
+  if(document.getElementById('leifModal')) return;
+
+  const rows = pending.map(p=>{
+    const amt = p.loanAmount ? fmtK(p.loanAmount) : '';
+    const np = p.nonProducer;
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border);" data-leifkey="${String(p.key).replace(/"/g,'&quot;')}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+        <div><div style="font-weight:700;font-size:13.5px;">${p.clientName||'(loan)'} <span style="color:var(--text-tertiary);font-weight:500;">${amt}</span></div>
+          <div style="font-size:11.5px;color:var(--text-tertiary);">Referred by <b style="color:var(--text-secondary);">${p.referredBy}</b>${np?' — not a producer':''}</div></div>
+      </div>
+      ${np
+        ? `<div style="font-size:12px;color:var(--coral);background:var(--red-bg);padding:8px 10px;border-radius:7px;">Referrer isn't a producer — this loan is paused for review. Use the assignment tool to pick the right LO.</div>`
+        : `<div style="display:flex;gap:8px;">
+            <button class="leif-choice btn" data-choice="referred" style="flex:1;">Credit ${p.referredBy}</button>
+            <button class="leif-choice btn btn-primary" data-choice="leif" style="flex:1;">Keep as Leif's</button>
+          </div>`}
+    </div>`;
+  }).join('');
+
+  const modal=document.createElement('div');
+  modal.id='leifModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,33,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML=`<div style="background:var(--card);border-radius:16px;max-width:560px;width:100%;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
+      <div style="font-size:17px;font-weight:800;">Confirm Leif Potter referrals</div>
+      <div style="font-size:13px;color:var(--text-secondary);margin-top:3px;">Leif originates for new hires. For each referred loan, confirm whether credit goes to the referrer or stays as Leif's own production. Your choice is remembered — you won't be asked again for these loans.</div>
+    </div>
+    <div style="padding:6px 24px;overflow-y:auto;">${rows}</div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:10px;align-items:center;">
+      <span style="font-size:12px;color:var(--text-tertiary);">Unanswered loans stay as Leif's.</span>
+      <button class="btn btn-primary" onclick="saveLeifDecisions()">Done</button>
+    </div></div>`;
+  document.body.appendChild(modal);
+
+  // toggle choices
+  modal.querySelectorAll('.leif-choice').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      const row = e.target.closest('[data-leifkey]');
+      row.querySelectorAll('.leif-choice').forEach(b=>{ b.classList.remove('btn-primary'); b.style.outline='none'; });
+      e.target.classList.add('btn-primary');
+      e.target.style.outline='2px solid var(--teal)';
+      row.setAttribute('data-chosen', e.target.getAttribute('data-choice'));
+    });
+  });
+}
+function dismissLeifPrompt(){ const m=document.getElementById('leifModal'); if(m) m.remove(); }
+async function saveLeifDecisions(){
+  const rows=document.querySelectorAll('#leifModal [data-leifkey]');
+  let n=0;
+  rows.forEach(r=>{
+    const key=r.getAttribute('data-leifkey');
+    const chosen=r.getAttribute('data-chosen');
+    if(key && chosen){ currentData.leifDecisions[key]=chosen; delete LEIF_PENDING[key]; n++; }
+    else if(key){ currentData.leifDecisions[key]='leif'; delete LEIF_PENDING[key]; } // default: keep as Leif's
+  });
+  dismissLeifPrompt();
+  await saveToCloud();
+  const f=filterData(currentData.ytdData,currentData.filters);
+  updateKPIs(f); updateCharts(f); updateLeaderboard(f); updateBanner(currentData.filters.timePeriod,f.length);
+  if(currentData.pipeline.length>0) updatePipelineKPIs(currentData.pipeline);
+  showToast(n>0?`Saved ${n} referral decision${n>1?'s':''}`:"Kept all as Leif's production");
+}
+
 // ═══════════════════════════════════════════
 // UPLOAD SYSTEM
 // ═══════════════════════════════════════════
@@ -2120,9 +2402,13 @@ async function processExcelFile(file) {
         const ws=wb.Sheets[wb.SheetNames[0]];
         const json=XLSX.utils.sheet_to_json(ws);
         let processed=[], fileType='unknown';
-        if(file.name.toLowerCase().includes('sales')||file.name.toLowerCase().includes('funded')){fileType='production';processed=processRobustProductionData(json);}
-        else if(file.name.toLowerCase().includes('boyd')||file.name.toLowerCase().includes('pipeline')){fileType='pipeline';processed=processRobustPipelineData(json);}
-        else{const first=json[0]||{};if(first['Funded Date']){fileType='production';processed=processRobustProductionData(json);}else if(first['Created On']){fileType='pipeline';processed=processRobustPipelineData(json);}else throw new Error('Unknown file format');}
+        const fnl=file.name.toLowerCase();
+        const first=json[0]||{};
+        const isLeadFile = fnl.includes('lead') || first['(Do Not Modify) Lead']!==undefined || (first['LOS File Name']!==undefined && first['(Do Not Modify) Loan']===undefined);
+        if(isLeadFile){fileType='leads';processed=processLeadData(json);}
+        else if(fnl.includes('sales')||fnl.includes('funded')){fileType='production';processed=processRobustProductionData(json);}
+        else if(fnl.includes('boyd')||fnl.includes('pipeline')){fileType='pipeline';processed=processRobustPipelineData(json);}
+        else{if(first['Funded Date']){fileType='production';processed=processRobustProductionData(json);}else if(first['Created On']){fileType='pipeline';processed=processRobustPipelineData(json);}else throw new Error('Unknown file format');}
         resolve({filename:file.name,fileType,rawRecords:json.length,recordCount:processed.length,data:processed,columns:Object.keys(json[0]||{}),sampleData:json.slice(0,3)});
       }catch(err){reject(err);}
     };
@@ -2151,6 +2437,46 @@ function creditedLO(owner, referredBy, productionAssistant){
   // Nothing usable — keep the owner rather than inventing a name, but flag it
   return own || 'Unknown LO';
 }
+
+// ── Leif Potter transition-LO handling ──
+// Leif does his own production AND originates for new hires. Loans of his that carry a
+// Referred By may belong to the referrer. We NEVER auto-move them — Leif keeps them by
+// default. Each such loan is queued for a one-time manual confirmation; once decided,
+// the choice is remembered per-loan (currentData.leifDecisions) and never asked again.
+const LEIF_NAMES = ['leif potter'];
+function isLeif(name){ return name && LEIF_NAMES.includes(String(name).trim().toLowerCase()); }
+// Stable per-loan key: prefer loanId, else losFileName, else client+amount
+function leifLoanKey(l){
+  const id = (l.loanId||l.losFileName||'').toString().trim();
+  if(id) return 'leif:'+id;
+  return 'leif:'+(l.clientName||'').toString().trim().toLowerCase()+':'+(l.loanAmount||0);
+}
+const LEIF_PENDING = {};
+// Returns the LO a Leif loan should be credited to, queuing for confirmation if undecided.
+// Only applies to loans whose Owner is Leif AND that have a real Referred By.
+function applyLeifRule(l){
+  if(!isLeif(l.owner)) return l.loName; // not a Leif-owned loan
+  const ref = (l.referredBy||'').toString().trim();
+  if(!ref) return 'Leif Potter'; // his own production, no referrer
+  const key = leifLoanKey(l);
+  const decided = currentData.leifDecisions[key];
+  if(decided === 'referred'){
+    // credit the referrer — but never a non-producer
+    return isNonProducer(ref) ? 'Unassigned (needs review)' : ref;
+  }
+  if(decided === 'leif') return 'Leif Potter';
+  // Undecided: if referrer is a non-producer, pause for review; otherwise queue confirmation, default Leif
+  if(isNonProducer(ref)){
+    if(!LEIF_PENDING[key]) LEIF_PENDING[key]={key, clientName:l.clientName, referredBy:ref, loanAmount:l.loanAmount, nonProducer:true};
+    scheduleLeifPrompt();
+    return 'Unassigned (needs review)';
+  }
+  if(!LEIF_PENDING[key]) LEIF_PENDING[key]={key, clientName:l.clientName, referredBy:ref, loanAmount:l.loanAmount, nonProducer:false};
+  scheduleLeifPrompt();
+  return 'Leif Potter'; // default until confirmed
+}
+let _leifPromptTimer=null;
+function scheduleLeifPrompt(){ if(_leifPromptTimer) return; _leifPromptTimer=setTimeout(()=>{ _leifPromptTimer=null; showLeifPrompt(); }, 700); }
 
 // Embedded correction map for David Arvidson / Rachael Gaines loans → correct producer.
 // Keyed by loan-ID prefix and by client surname, so it fixes already-stored loans
@@ -2197,6 +2523,53 @@ function processRobustProductionData(json){
     owner:(r['Owner']||'').toString().trim(), referredBy:(r['Referred By (TL/OS)']||'').toString().trim(), productionAssistant:(r['Production Assistant']||'').toString().trim(),
     interestRate:parseFloat(r['Interest Rate']||0),lender:'Partners Mortgage'
   })).filter(l=>l.loanAmount>0&&l.fundingDate&&l.fundingDate.startsWith('2026')&&new Date(l.fundingDate)<=new Date());
+}
+
+// ── Lead parser. A lead = one row in the Admin "All Leads/Loans" export, dated by Created On. ──
+// Credit attribution (David/Rachael) applies here too.
+function processLeadData(json){
+  return json.map(r=>{
+    const fn=(r['First Name']||'').toString().trim();
+    const ln=(r['Last Name']||'').toString().trim();
+    const nm=(r[' Name']||r['Name']||`${fn} ${ln}`).toString().trim();
+    return {
+      leadDate: formatDate(r['Created On']),
+      loanAmount: parseFloat((r['Loan Amount']||0).toString().replace(/[$,]/g,'')),
+      loName: creditedLO(r['Owner'], r['Referred By (TL/OS)'], r['Production Assistant']),
+      owner:(r['Owner']||'').toString().trim(),
+      clientName: nm || 'Unknown',
+      loanPurpose: (r['Purpose of loan']||'Unknown').toString(),
+      losFileName: (r['LOS File Name']||'').toString().trim(),  // join key to funded loans
+      leadId: (r['(Do Not Modify) Lead']||'').toString()
+    };
+  }).filter(l=>l.leadDate && l.leadDate.startsWith('2026') && new Date(l.leadDate)<=new Date())
+    .map(l=>{
+      // David/Rachael never credited — resolve via overrides/map; unresolved → queue for assignment prompt
+      if(isNonProducer(l.loName)){
+        const credited = resolveCredit(l);
+        if(credited===null){
+          const key=(l.clientName||l.losFileName||'').toString().toLowerCase();
+          if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key]={clientName:l.clientName,loanId:l.losFileName,loanAmount:l.loanAmount,loName:l.loName};
+          if(typeof scheduleCreditPrompt==='function') scheduleCreditPrompt();
+          l.loName='Unassigned (needs review)';
+        } else l.loName=credited;
+      }
+      return l;
+    });
+}
+
+// Group leads into monthly buckets (full replace per upload — the export is the source of truth)
+function applyLeadData(leads){
+  const byMonth={};
+  leads.forEach(l=>{ const k=toDateStr(l.leadDate).slice(0,7); if(!k)return; (byMonth[k]=byMonth[k]||[]).push(l); });
+  // Replace any month present in this upload; keep months not covered (e.g. daily file only touches one month)
+  Object.entries(byMonth).forEach(([m,arr])=>{ currentData.monthlyLeads[m]=arr; });
+  currentData.leadsUpdatedAt=Date.now();
+}
+
+// Flatten all lead months into one array
+function allLeads(){
+  const out=[]; Object.values(currentData.monthlyLeads||{}).forEach(arr=>{ (arr||[]).forEach(l=>out.push(l)); }); return out;
 }
 
 function processRobustPipelineData(json){
@@ -2317,7 +2690,7 @@ function processRobustPipelineData(json){
       statusReason: statusColName ? (r[statusColName]||'').toString() : '',
       status: status
     };
-  }).filter(l=>l.loanAmount>0&&l.applicationDate&&!l.fundedDate);
+  }).filter(l=>l.loanAmount>0 && !l.fundedDate);
 
   // Debug output
   const statusDist = {};
@@ -2407,9 +2780,10 @@ function displayProcessingResults(){
   let html='';
   ok.forEach(r=>{
     const vol=r.data.reduce((s,i)=>s+(i.loanAmount||0),0);
-    html+=`<div class="result-card success"><div class="result-header"><span>✓</span><div><h3>${r.filename}</h3><p>${r.fileType==='production'?'Production Data':'Pipeline Data'}</p></div></div>
+    const typeLabel = r.fileType==='production'?'Production Data':r.fileType==='leads'?'Lead Data':'Pipeline Data';
+    html+=`<div class="result-card success"><div class="result-header"><span>✓</span><div><h3>${r.filename}</h3><p>${typeLabel}</p></div></div>
     <div class="result-stats"><div class="result-stat"><div class="result-stat-val">${r.recordCount}</div><div class="result-stat-lbl">Records</div></div><div class="result-stat"><div class="result-stat-val">${fmtK(vol)}</div><div class="result-stat-lbl">Volume</div></div><div class="result-stat"><div class="result-stat-val">${r.columns.length}</div><div class="result-stat-lbl">Columns</div></div></div>
-    <table class="result-table"><thead><tr><th>Date</th><th>Amount</th><th>LO</th><th>Client</th></tr></thead><tbody>${r.data.slice(0,3).map(i=>`<tr><td>${i.fundingDate||i.applicationDate||'—'}</td><td>${fmtK(i.loanAmount)}</td><td>${i.loName}</td><td>${i.clientName}</td></tr>`).join('')}</tbody></table></div>`;
+    <table class="result-table"><thead><tr><th>Date</th><th>Amount</th><th>LO</th><th>Client</th></tr></thead><tbody>${r.data.slice(0,3).map(i=>`<tr><td>${i.fundingDate||i.applicationDate||i.leadDate||'—'}</td><td>${fmtK(i.loanAmount)}</td><td>${i.loName}</td><td>${i.clientName}</td></tr>`).join('')}</tbody></table></div>`;
   });
   err.forEach(r=>{ html+=`<div class="result-card error"><div class="result-header"><span>✗</span><div><h3>${r.filename}</h3><p>Error: ${r.error}</p></div></div></div>`; });
   c.innerHTML=html;
@@ -2417,7 +2791,7 @@ function displayProcessingResults(){
 
 function applyDataAndReturn(){
   const ok=uploadData.processedFiles.filter(f=>!f.error);
-  let pc=0,plc=0;
+  let pc=0,plc=0,lc=0;
   let skippedMonths = [];
   
   ok.forEach(r=>{
@@ -2450,7 +2824,12 @@ function applyDataAndReturn(){
     }
     else if(r.fileType==='pipeline'){
       currentData.pipeline=[...r.data];
+      currentData.pipelineUpdatedAt = Date.now();
       plc+=r.recordCount;
+    }
+    else if(r.fileType==='leads'){
+      applyLeadData(r.data);
+      lc += r.recordCount;
     }
   });
   
@@ -2469,9 +2848,11 @@ function applyDataAndReturn(){
     }
     updatePipelineKPIs(currentData.pipeline);
   }
+  if(lc>0){ try{ updateLeadsView(); updateLeadsSummary(); }catch(e){console.warn(e);} }
   const msgs=[];
   if(pc>0) msgs.push(`${pc} funded loans`);
   if(plc>0) msgs.push(`${plc} pipeline loans`);
+  if(lc>0) msgs.push(`${lc} leads`);
   if(skippedMonths.length>0) msgs.push(`${skippedMonths.length} locked month${skippedMonths.length>1?'s':''} preserved`);
   showToast(`Applied ${msgs.join(' · ')} to dashboard`);
   showView('dashboard');
@@ -2530,6 +2911,11 @@ function saveToLocalStorage(){
     timestamp:new Date().toISOString(),
     ytdData:currentData.ytdData,
     pipeline:currentData.pipeline,
+    pipelineUpdatedAt:currentData.pipelineUpdatedAt||0,
+    monthlyLeads:currentData.monthlyLeads||{},
+    leadsUpdatedAt:currentData.leadsUpdatedAt||0,
+    creditOverrides:currentData.creditOverrides||{},
+    leifDecisions:currentData.leifDecisions||{},
     monthlyProduction:currentData.monthlyProduction,
     lockedMonths:currentData.lockedMonths,
     filters:currentData.filters,
@@ -2600,6 +2986,11 @@ function filterData(data, filters){
   // Remap their loans to the correct LO on every render (KPIs, charts, leaderboard all flow through here).
   const unresolved = [];
   f = f.map(l => {
+    // Leif Potter transition-LO rule first (only affects Leif-owned loans with a referrer)
+    if(isLeif(l.owner) && (l.referredBy||'').toString().trim()){
+      const leifTo = applyLeifRule(l);
+      if(leifTo !== l.loName) l = {...l, loName: leifTo};
+    }
     if(!isNonProducer(l.loName)) return l;
     const credited = resolveCredit(l);
     if(credited === null){
@@ -2638,6 +3029,9 @@ function resolveCredit(l){
   if(ck && currentData.creditOverrides && currentData.creditOverrides[ck]) return currentData.creditOverrides[ck];
   const ik = (l.loanId||'').toString().trim().toLowerCase();
   if(ik && currentData.creditOverrides && currentData.creditOverrides[ik]) return currentData.creditOverrides[ik];
+  // leads key the loan number in losFileName
+  const lk = (l.losFileName||'').toString().trim().toLowerCase();
+  if(lk && currentData.creditOverrides && currentData.creditOverrides[lk]) return currentData.creditOverrides[lk];
   // 1) live referrer fields if the loan carried them
   if(l.referredBy && !isNonProducer(l.referredBy)) return l.referredBy.toString().trim();
   if(l.productionAssistant && !isNonProducer(l.productionAssistant)) return l.productionAssistant.toString().trim();
@@ -2784,6 +3178,24 @@ function drawHeroSparkline(){
   const max=Math.max(...vals,1); const W=200,H=46;
   const pts=vals.map((v,i)=>`${(i/(vals.length-1))*W},${H-(v/max)*(H-6)-3}`);
   path.setAttribute('d', 'M'+pts.join(' L'));
+}
+
+// Clear the stored pipeline snapshot from local + cloud so the next upload is authoritative.
+// Fixes the case where a legacy snapshot (no timestamp) lingers and can't be displaced.
+async function forceRefreshPipeline(){
+  if(!confirm('Clear the stored lock/pipeline snapshot?\n\nThis removes the current pipeline data everywhere so your next Boyd file upload becomes the source of truth. Funded production and leads are NOT affected.')) return;
+  currentData.pipeline = [];
+  currentData.pipelineUpdatedAt = 0;
+  saveToLocalStorage();
+  try {
+    if(typeof db !== 'undefined' && db){
+      await db.collection('dashboard').doc('state').set({ pipeline: JSON.stringify([]), pipelineUpdatedAt: 0 }, { merge: true });
+    }
+  } catch(e){ console.warn('Cloud pipeline clear:', e.message); }
+  updatePipelineKPIs([]);
+  if($('lockTableBody')) $('lockTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:20px;">Pipeline cleared — upload the current Boyd file to refresh locks</td></tr>';
+  if($('pipelineAsOf')) $('pipelineAsOf').textContent = 'cleared — upload to refresh';
+  showToast('Pipeline cleared — upload the current Boyd file now');
 }
 
 function updatePipelineKPIs(pl){
@@ -3161,6 +3573,11 @@ function renderLockTable(pl) {
 
   if($('lockCount')) $('lockCount').textContent = activeLocks.length;
   if($('lockVolLabel')) $('lockVolLabel').textContent = `${fmtK(lockVol)} locked volume` + (expiredLocks.length > 0 ? ` · ${expiredLocks.length} expired` : '');
+  // Pipeline freshness stamp
+  if($('pipelineAsOf')){
+    const t = currentData.pipelineUpdatedAt;
+    $('pipelineAsOf').textContent = t ? `as of ${new Date(t).toLocaleString([], {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})}` : 'snapshot date unknown — re-upload to refresh';
+  }
 
   const lockByLO = {};
   activeLocks.forEach(l => {
@@ -3455,6 +3872,242 @@ function updateBanner(period,count){
 }
 
 // ═══════════════════════════════════════════
+// LEADS — daily new-lead tracking, leaderboard, conversion, mix
+// ═══════════════════════════════════════════
+let _leadTrendMode = 'count';
+function setLeadTrendMode(m){
+  _leadTrendMode = m;
+  document.querySelectorAll('#leadTrendPills .pill-btn').forEach(b=>b.classList.toggle('active', b.textContent.trim().toLowerCase()===m));
+  renderLeadDailyChart();
+}
+
+let _leadPeriod = 'MTD';
+function setLeadPeriod(p){ _leadPeriod = p; updateLeadsView(); }
+
+function leadsForCurrentMonth(){
+  const now=new Date(); const k=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  return currentData.monthlyLeads[k]||[];
+}
+
+// Return leads for the selected period + a human label
+function leadsForPeriod(){
+  const all = allLeads();
+  const now=new Date();
+  const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const p=_leadPeriod;
+  if(p==='YTD') return {leads:all, label:'YTD'};
+  if(p==='Q1') return {leads:all.filter(l=>['01','02','03'].includes(toDateStr(l.leadDate).slice(5,7))), label:'Q1'};
+  if(p==='Q2') return {leads:all.filter(l=>['04','05','06'].includes(toDateStr(l.leadDate).slice(5,7))), label:'Q2'};
+  if(/^2026-\d\d$/.test(p)) return {leads:currentData.monthlyLeads[p]||[], label:mn[parseInt(p.slice(5))-1]};
+  // MTD default
+  return {leads:currentData.monthlyLeads[curM]||[], label:'MTD'};
+}
+
+function updateLeadsView(){
+  const all = allLeads();
+  const empty=$('leadsEmpty'), body=$('leadsBody');
+  if(!all.length){ if(empty)empty.style.display='block'; if(body)body.style.display='none'; updateLeadsSummary(); return; }
+  if(empty)empty.style.display='none'; if(body)body.style.display='block';
+
+  const sel = leadsForPeriod();
+  const periodLeads = sel.leads;
+  const pVol = periodLeads.reduce((s,l)=>s+l.loanAmount,0);
+  const today = new Date().toISOString().split('T')[0];
+  const todayLeads = all.filter(l=>toDateStr(l.leadDate)===today);
+  const todayVol = todayLeads.reduce((s,l)=>s+l.loanAmount,0);
+  const avg = periodLeads.length? pVol/periodLeads.length : 0;
+
+  if($('leadHeroLabel')) $('leadHeroLabel').textContent = `New Leads — ${sel.label}`;
+  if($('leadHeroCount')) $('leadHeroCount').textContent = periodLeads.length;
+  if($('leadHeroVol')) $('leadHeroVol').textContent = `${fmtK(pVol)} in lead volume`;
+  if($('leadToday')) $('leadToday').textContent = todayLeads.length;
+  if($('leadTodayVol')) $('leadTodayVol').textContent = todayLeads.length? `${fmtK(todayVol)} today` : 'No leads today';
+  if($('leadAvg')) $('leadAvg').textContent = fmtK(avg);
+
+  // Conversion: leads whose LOS File Name matches a funded loan number
+  const conv = computeLeadConversion();
+  if($('leadConv')) $('leadConv').textContent = conv.overallPct!=null? `${conv.overallPct}%` : '—';
+  if($('leadConvSub')) $('leadConvSub').textContent = conv.overallPct!=null? `${conv.converted} of ${conv.total} leads funded` : 'Upload funded loans to compute';
+
+  renderLeadDailyChart();
+  renderLeadLeaderboard(periodLeads);
+  renderLeadConvChart(conv);
+  renderLeadPurposeChart(periodLeads);
+  renderLeadMomentum(periodLeads, pVol, todayLeads, todayVol, conv);
+  updateLeadsSummary();
+}
+
+function renderLeadMomentum(mtd, mtdVol, todayLeads, todayVol, conv){
+  const t=$('leadMomentumText'); if(!t) return;
+  const parts=[];
+  if(todayLeads.length) parts.push(`<b>${todayLeads.length}</b> new ${todayLeads.length===1?'lead':'leads'} today worth <span class="accent-up">${fmtK(todayVol)}</span>.`);
+  const byLo={}; mtd.forEach(l=>{ byLo[l.loName]=(byLo[l.loName]||0)+1; });
+  const top=Object.entries(byLo).sort((a,b)=>b[1]-a[1])[0];
+  if(top) parts.push(`<b>${top[0]}</b> leads the month with <b>${top[1]}</b> new leads.`);
+  if(conv.overallPct!=null) parts.push(`<b>${conv.overallPct}%</b> of leads have converted to funded loans.`);
+  parts.push(`<b>${mtd.length}</b> leads this month — <b>${fmtK(mtdVol)}</b> in potential volume.`);
+  t.innerHTML = parts[0];
+  let i=0; if(window._leadMomTimer) clearInterval(window._leadMomTimer);
+  if(parts.length>1) window._leadMomTimer=setInterval(()=>{ i=(i+1)%parts.length; t.style.opacity='0'; setTimeout(()=>{t.innerHTML=parts[i];t.style.transition='opacity .4s';t.style.opacity='1';},200); },5000);
+}
+
+function renderLeadLeaderboard(leads){
+  const t={}; leads.forEach(l=>{ if(!t[l.loName])t[l.loName]={n:0,v:0}; t[l.loName].n++; t[l.loName].v+=l.loanAmount; });
+  const sorted=Object.entries(t).sort((a,b)=>b[1].n-a[1].n).slice(0,12);
+  const el=$('leadLeaderboardBody'); if(!el) return;
+  if(!sorted.length){ el.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px;">No leads this month</td></tr>'; return; }
+  const max=sorted[0][1].n||1;
+  el.innerHTML=sorted.map(([name,d],i)=>{
+    const rc=i===0?'background:var(--amber);color:#fff;':i===1?'background:var(--warm);color:#fff;':i===2?'background:var(--gold);color:#5A4A1F;':'background:var(--bg-warm);color:var(--text-tertiary);';
+    const rb=i===0?'background:var(--teal-light);':'';
+    return `<tr style="${rb}"><td style="padding:8px 6px 8px 8px;"><div style="width:23px;height:23px;border-radius:50%;${rc}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
+      <td style="padding:8px 0;font-weight:${i===0?'800':'600'};"><div>${name}</div><div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;"><div style="height:100%;width:${Math.round(d.n/max*100)}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div></td>
+      <td style="padding:8px 8px 8px 0;text-align:right;font-weight:700;vertical-align:top;">${d.n}</td>
+      <td style="padding:8px 0;text-align:right;color:var(--text-secondary);vertical-align:top;">${fmtK(d.v)}</td></tr>`;
+  }).join('');
+}
+
+function renderLeadDailyChart(){
+  const ctx=$('leadDailyChart'); if(!ctx||typeof Chart==='undefined') return;
+  if(currentData.charts.leadDaily) currentData.charts.leadDaily.destroy();
+  const css=getComputedStyle(document.documentElement);
+  const teal=css.getPropertyValue('--teal').trim(); const muted=css.getPropertyValue('--chart-muted').trim();
+  const all=allLeads();
+  const now=new Date();
+  const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const sumOrCount = arr => _leadTrendMode==='volume' ? arr.reduce((s,l)=>s+l.loanAmount,0) : arr.length;
+  const titleEl=$('leadDailyTitle'), subEl=$('leadTrendSub');
+
+  let labels=[], vals=[], highlightLast=true, grain='day';
+  // Decide granularity from the selected period
+  const p=_leadPeriod;
+  if(p==='YTD'){
+    grain='month';
+    // months Jan..current
+    const buckets=[];
+    for(let m=0;m<=now.getMonth();m++){ const key=`${now.getFullYear()}-${String(m+1).padStart(2,'0')}`; buckets.push({key,label:mn[m]}); }
+    labels=buckets.map(b=>b.label);
+    vals=buckets.map(b=> sumOrCount(currentData.monthlyLeads[b.key]||[]));
+  } else if(p==='Q1' || p==='Q2'){
+    grain='month';
+    const months = p==='Q1'?[0,1,2]:[3,4,5];
+    labels=months.map(m=>mn[m]);
+    vals=months.map(m=> sumOrCount(currentData.monthlyLeads[`${now.getFullYear()}-${String(m+1).padStart(2,'0')}`]||[]));
+  } else if(/^2026-\d\d$/.test(p)){
+    grain='day';
+    // every day of that month
+    const yr=parseInt(p.slice(0,4)), mo=parseInt(p.slice(5))-1;
+    const dim=new Date(yr,mo+1,0).getDate();
+    const monthLeads=currentData.monthlyLeads[p]||[];
+    for(let d=1; d<=dim; d++){
+      const ds=`${p}-${String(d).padStart(2,'0')}`;
+      labels.push(`${mo+1}/${d}`);
+      vals.push(sumOrCount(monthLeads.filter(l=>toDateStr(l.leadDate)===ds)));
+    }
+    highlightLast=false;
+  } else {
+    // MTD — daily for current month so far
+    grain='day';
+    const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const monthLeads=currentData.monthlyLeads[curM]||[];
+    for(let d=1; d<=now.getDate(); d++){
+      const ds=`${curM}-${String(d).padStart(2,'0')}`;
+      labels.push(`${now.getMonth()+1}/${d}`);
+      vals.push(sumOrCount(monthLeads.filter(l=>toDateStr(l.leadDate)===ds)));
+    }
+  }
+
+  if(titleEl) titleEl.textContent = grain==='month' ? 'New Leads by Month' : 'Daily New Leads';
+  if(subEl) subEl.textContent = (grain==='month'?'Leads ':'Leads ') + (_leadTrendMode==='volume'?'volume ':'') + (grain==='month'?'per month':'created per day');
+
+  currentData.charts.leadDaily=new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{data:vals,backgroundColor:vals.map((v,i)=>(highlightLast&&i===vals.length-1)?teal:muted),borderRadius:6,borderSkipped:false}]},
+    options:{...chartDefaults, animation:{duration:700},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>_leadTrendMode==='volume'?fmtK(c.raw):`${c.raw} leads`}}}}
+  });
+}
+
+function renderLeadPurposeChart(leads){
+  const ctx=$('leadPurposeChart'); if(!ctx||typeof Chart==='undefined') return;
+  if(currentData.charts.leadPurpose) currentData.charts.leadPurpose.destroy();
+  const mix={}; leads.forEach(l=>{ const p=(l.loanPurpose||'Unknown').trim(); const k=/refi/i.test(p)?'Refinance':/purch/i.test(p)?'Purchase':p; mix[k]=(mix[k]||0)+1; });
+  const labels=Object.keys(mix); if(!labels.length) return;
+  const css=getComputedStyle(document.documentElement);
+  const teal=css.getPropertyValue('--teal').trim(),amber=css.getPropertyValue('--amber').trim(),gold=css.getPropertyValue('--gold').trim(),purple=css.getPropertyValue('--purple').trim();
+  const colorFor=l=>l==='Purchase'?teal:l==='Refinance'?amber:[gold,purple,teal][labels.indexOf(l)%3];
+  currentData.charts.leadPurpose=new Chart(ctx.getContext('2d'),{
+    type:'doughnut',
+    data:{labels,datasets:[{data:labels.map(l=>mix[l]),backgroundColor:labels.map(colorFor),borderWidth:3,borderColor:css.getPropertyValue('--card').trim()}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'66%',plugins:{legend:{position:'bottom',labels:{font:{family:'Manrope',size:12,weight:'600'},color:css.getPropertyValue('--text-secondary').trim(),padding:14,boxWidth:12,usePointStyle:true,pointStyle:'circle'}}}}
+  });
+}
+
+// Conversion: a lead converted if its LOS File Name matches a funded loan number (loanId prefix or Topic number)
+function computeLeadConversion(){
+  const funded = currentData.ytdData||[];
+  // Build set of funded loan numbers (loanId could be GUID; production stores loanId from Sales export which IS the number-less GUID,
+  // but Topic-derived numbers live in clientName extraction). We match on any numeric loan number we can find.
+  const fundedNums = new Set();
+  funded.forEach(l=>{
+    const id=String(l.loanId||'');
+    // Sales Dashboard loanId is a GUID; the loan NUMBER came from Topic. We stored clientName, not number.
+    // So also index any 7-9 digit number found on the record.
+    const m=id.match(/\b(\d{7,9})\b/); if(m) fundedNums.add(m[1]);
+    if(l.losFileName) fundedNums.add(String(l.losFileName).trim());
+  });
+  const all=allLeads();
+  if(!all.length || !fundedNums.size) return {overallPct:null, converted:0, total:all.length, byMonth:{}};
+  let converted=0; const byMonth={};
+  all.forEach(l=>{
+    const k=toDateStr(l.leadDate).slice(0,7);
+    if(!byMonth[k]) byMonth[k]={total:0,conv:0};
+    byMonth[k].total++;
+    if(l.losFileName && fundedNums.has(String(l.losFileName).trim())){ converted++; byMonth[k].conv++; }
+  });
+  return {overallPct:Math.round(converted/all.length*100), converted, total:all.length, byMonth};
+}
+
+function renderLeadConvChart(conv){
+  const ctx=$('leadConvChart'); if(!ctx||typeof Chart==='undefined') return;
+  if(currentData.charts.leadConv) currentData.charts.leadConv.destroy();
+  const months=Object.keys(conv.byMonth||{}).sort();
+  const css=getComputedStyle(document.documentElement);
+  const teal=css.getPropertyValue('--teal').trim(), lime=css.getPropertyValue('--lime').trim();
+  if(!months.length){
+    // No funded match yet — show a friendly note via empty chart
+    currentData.charts.leadConv=new Chart(ctx.getContext('2d'),{type:'bar',data:{labels:['—'],datasets:[{data:[0],backgroundColor:teal}]},options:{...chartDefaults,plugins:{legend:{display:false}}}});
+    return;
+  }
+  const mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const labels=months.map(m=>mn[parseInt(m.slice(5))-1]);
+  const pct=months.map(m=>{const d=conv.byMonth[m];return d.total?Math.round(d.conv/d.total*100):0;});
+  currentData.charts.leadConv=new Chart(ctx.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[{data:pct,backgroundColor:lime,borderRadius:6,borderSkipped:false}]},
+    options:{...chartDefaults, animation:{duration:700},
+      scales:{...chartDefaults.scales, y:{...chartDefaults.scales.y, ticks:{...chartDefaults.scales.y.ticks, callback:v=>v+'%'}, suggestedMax:100}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const d=conv.byMonth[months[c.dataIndex]];return `${c.raw}% (${d.conv}/${d.total})`;}}}}}
+  });
+}
+
+// Dashboard summary block
+function updateLeadsSummary(){
+  const host=$('leadsSummary'); if(!host) return;
+  const all=allLeads();
+  if(!all.length){ host.style.display='none'; return; }
+  host.style.display='';
+  const mtd=leadsForCurrentMonth();
+  const mtdVol=mtd.reduce((s,l)=>s+l.loanAmount,0);
+  const today=new Date().toISOString().split('T')[0];
+  const todayN=all.filter(l=>toDateStr(l.leadDate)===today).length;
+  if($('sumLeadMtd')) $('sumLeadMtd').textContent=mtd.length;
+  if($('sumLeadVol')) $('sumLeadVol').textContent=fmtK(mtdVol);
+  if($('sumLeadToday')) $('sumLeadToday').textContent=todayN;
+}
+
+// ═══════════════════════════════════════════
 // FILTERS & ACTIONS
 // ═══════════════════════════════════════════
 function setupFilters(){
@@ -3530,6 +4183,11 @@ document.addEventListener('DOMContentLoaded',function(){
         const d=JSON.parse(saved);
         currentData.ytdData=d.ytdData||[];
         currentData.pipeline=d.pipeline||[];
+        currentData.pipelineUpdatedAt=d.pipelineUpdatedAt||0;
+        currentData.monthlyLeads=d.monthlyLeads||{};
+        currentData.leadsUpdatedAt=d.leadsUpdatedAt||0;
+        currentData.creditOverrides=d.creditOverrides||{};
+        currentData.leifDecisions=d.leifDecisions||{};
         currentData.goals=d.goals||currentData.goals;
         currentData.monthlyProduction=d.monthlyProduction||{};
         currentData.lockedMonths=d.lockedMonths||{};
@@ -3552,6 +4210,11 @@ document.addEventListener('DOMContentLoaded',function(){
     try {
       loadHistoricalData();
     } catch(e) { console.error('Historical load error:', e); }
+    
+    // Seed embedded YTD lead history (only months not already present; uploads win)
+    try {
+      loadHistoricalLeads();
+    } catch(e) { console.error('Historical leads load error:', e); }
     
     // Reattribute any already-stored loans crediting David Arvidson / Rachael Gaines
     try {
@@ -3587,6 +4250,7 @@ document.addEventListener('DOMContentLoaded',function(){
     }
     
     updateKPIs(init); updateCharts(init); updateLeaderboard(init); updateBanner(currentData.filters.timePeriod, init.length);
+    try { updateLeadsSummary(); } catch(e){}
     
     // Load from Firestore FIRST — merge cloud data, then push only if local has more
     initFirebase();
@@ -3603,6 +4267,7 @@ document.addEventListener('DOMContentLoaded',function(){
         }
         updateKPIs(f); updateCharts(f); updateLeaderboard(f); updateBanner(currentData.filters.timePeriod, f.length);
         if(currentData.pipeline.length > 0) updatePipelineKPIs(currentData.pipeline);
+        try { updateLeadsSummary(); if(currentData.currentView==='leads') updateLeadsView(); } catch(e){}
         showToast(`Synced from cloud — ${currentData.ytdData.length} YTD loans`);
         updateSyncDot('green','Connected — synced');
         // Save merged + credit-corrected result back so the fix persists for everyone
