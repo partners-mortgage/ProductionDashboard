@@ -1402,6 +1402,7 @@ async function saveToCloud() {
       lockedMonths: JSON.stringify(currentData.lockedMonths),
       pipeline: JSON.stringify(currentData.pipeline),
       goals: JSON.stringify(currentData.goals),
+      creditOverrides: JSON.stringify(currentData.creditOverrides || {}),
       screenshotStatuses: JSON.stringify(currentData._screenshotStatuses || []),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: navigator.userAgent.substring(0, 50)
@@ -1426,6 +1427,7 @@ async function loadFromCloud() {
     const cloudLocked = JSON.parse(d.lockedMonths || '{}');
     const cloudPipeline = JSON.parse(d.pipeline || '[]');
     const cloudGoals = JSON.parse(d.goals || 'null');
+    const cloudOverrides = JSON.parse(d.creditOverrides || '{}');
     const cloudScreenshot = JSON.parse(d.screenshotStatuses || '[]');
     
     // Merge: cloud data wins for any month that has more loans
@@ -1444,6 +1446,11 @@ async function loadFromCloud() {
       updated = true;
     }
     if(cloudGoals) currentData.goals = cloudGoals;
+    // Merge credit overrides (cloud + local union; cloud wins on conflict)
+    if(cloudOverrides && Object.keys(cloudOverrides).length){
+      currentData.creditOverrides = Object.assign({}, currentData.creditOverrides, cloudOverrides);
+      updated = true;
+    }
     if(cloudScreenshot.length > 0) currentData._screenshotStatuses = cloudScreenshot;
     
     if(updated) {
@@ -1487,6 +1494,7 @@ let currentData = {
   charts: {},
   filters: { timePeriod: 'MTD', loFilter: 'All' },
   goals: { annualVolume: 240000000, annualUnits: 420, monthlyTarget: 20000000 },
+  creditOverrides: {}, // { 'clientname': 'Assigned LO' } — manual fixes for David/Rachael loans, persisted to Firebase
   currentView: 'dashboard'
 };
 
@@ -1762,6 +1770,105 @@ function showToast(msg, isError=false) {
   document.body.appendChild(t);
   setTimeout(()=>t.classList.add('show'),50);
   setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); },3000);
+}
+
+// ═══════════════════════════════════════════
+// CREDIT ASSIGNMENT PROMPT
+// David/Rachael loans that can't be auto-resolved → ask who to credit, store in Firebase.
+// ═══════════════════════════════════════════
+function knownLOList(){
+  // Build the LO picklist from loans already in the data (excludes non-producers)
+  const set = new Set();
+  const add = n => { const v=(n||'').toString().trim(); if(v && !isNonProducer(v) && v!=='Unassigned (needs review)' && v!=='Unattributed') set.add(v); };
+  Object.values(currentData.monthlyProduction||{}).forEach(b=>(b.loans||[]).forEach(l=>add(l.loName)));
+  (currentData.pipeline||[]).forEach(l=>add(l.loName));
+  // Always include the common referrers from our correction map
+  Object.values(CREDIT_FIX.p).forEach(add); Object.values(CREDIT_FIX.c).forEach(add);
+  return Array.from(set).sort();
+}
+
+function showCreditPrompt(){
+  const pending = Object.entries(PENDING_CREDIT);
+  if(pending.length === 0) return;
+  if(document.getElementById('creditModal')) return; // already open
+
+  const los = knownLOList();
+  const opts = los.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+
+  const rows = pending.map(([key, l])=>{
+    const client = l.clientName || '(no client name)';
+    const amt = l.loanAmount ? fmtK(l.loanAmount) : '';
+    const orig = l.__origName || 'David/Rachael';
+    return `<div style="display:grid;grid-template-columns:1fr 200px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:600;font-size:13.5px;">${client} <span style="color:var(--text-tertiary);font-weight:500;">${amt}</span></div>
+        <div style="font-size:11.5px;color:var(--text-tertiary);">Originally credited to a non-producer — assign the real LO</div>
+      </div>
+      <select class="credit-pick" data-key="${key.replace(/"/g,'&quot;')}" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
+        <option value="">— choose LO —</option>
+        ${opts}
+        <option value="__custom__">Other (type name)…</option>
+      </select>
+    </div>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'creditModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,33,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:84vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);">
+        <div style="font-size:17px;font-weight:800;">Assign Loan Credit</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:3px;">These loans were credited to David Arvidson or Rachael Gaines and couldn't be auto-matched. Pick the real producer — your choice is saved for all future runs.</div>
+      </div>
+      <div style="padding:8px 24px;overflow-y:auto;">${rows}</div>
+      <div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn" onclick="dismissCreditPrompt()">Later</button>
+        <button class="btn btn-primary" onclick="saveCreditAssignments()">Save Assignments</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // wire custom-name option
+  modal.querySelectorAll('.credit-pick').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      if(e.target.value === '__custom__'){
+        const name = prompt('Type the loan officer name to credit:');
+        if(name && name.trim()){
+          const o = document.createElement('option');
+          o.value = name.trim(); o.textContent = name.trim(); o.selected = true;
+          e.target.insertBefore(o, e.target.querySelector('option[value="__custom__"]'));
+        } else { e.target.value = ''; }
+      }
+    });
+  });
+}
+
+function dismissCreditPrompt(){
+  const m=document.getElementById('creditModal'); if(m) m.remove();
+}
+
+async function saveCreditAssignments(){
+  const picks = document.querySelectorAll('#creditModal .credit-pick');
+  let saved = 0;
+  picks.forEach(sel=>{
+    const key = sel.getAttribute('data-key');
+    const val = sel.value.trim();
+    if(key && val && val !== '__custom__'){
+      currentData.creditOverrides[key] = val;
+      delete PENDING_CREDIT[key];
+      saved++;
+    }
+  });
+  dismissCreditPrompt();
+  if(saved>0){
+    await saveToCloud(); // persist overrides to Firebase for all future runs/devices
+    // re-render with the new assignments applied
+    const f = filterData(currentData.ytdData, currentData.filters);
+    updateKPIs(f); updateCharts(f); updateLeaderboard(f); updateBanner(currentData.filters.timePeriod, f.length);
+    if(currentData.pipeline.length>0) updatePipelineKPIs(currentData.pipeline);
+    showToast(`Saved ${saved} loan assignment${saved>1?'s':''} — applied everywhere`);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2349,8 +2456,63 @@ function filterData(data, filters){
   
   if(filters.loFilter !== 'All') f = f.filter(l => l.loName === filters.loFilter);
   
+  // Credit correction — David Arvidson / Rachael Gaines are never the producer.
+  // Remap their loans to the correct LO on every render (KPIs, charts, leaderboard all flow through here).
+  const unresolved = [];
+  f = f.map(l => {
+    if(!isNonProducer(l.loName)) return l;
+    const credited = resolveCredit(l);
+    if(credited === null){
+      // Can't determine — queue for the assignment prompt, keep out of producer totals for now
+      unresolved.push(l);
+      return {...l, loName: 'Unassigned (needs review)'};
+    }
+    return credited === l.loName ? l : {...l, loName: credited};
+  });
+  // Surface any loans needing manual assignment (deduped by client)
+  if(unresolved.length){
+    unresolved.forEach(l => {
+      const key = (l.clientName||l.loanId||'').toString();
+      if(key && !PENDING_CREDIT[key.toLowerCase()]) PENDING_CREDIT[key.toLowerCase()] = l;
+    });
+    scheduleCreditPrompt();
+  }
+  
   console.log(`filterData: ${tp} → ${f.length} loans`);
   return f;
+}
+
+// Loans awaiting manual LO assignment, keyed by client name (lowercased)
+const PENDING_CREDIT = {};
+let _creditPromptTimer = null;
+function scheduleCreditPrompt(){
+  if(_creditPromptTimer) return;
+  _creditPromptTimer = setTimeout(()=>{ _creditPromptTimer=null; showCreditPrompt(); }, 600);
+}
+
+// Resolve the correct producer for a loan whose stored loName is David/Rachael.
+// Returns the correct LO name, or null if it genuinely can't be determined (→ prompt the user).
+function resolveCredit(l){
+  // 0) manual override the user has already chosen (persisted in Firebase)
+  const ck = (l.clientName||'').toString().trim().toLowerCase();
+  if(ck && currentData.creditOverrides && currentData.creditOverrides[ck]) return currentData.creditOverrides[ck];
+  const ik = (l.loanId||'').toString().trim().toLowerCase();
+  if(ik && currentData.creditOverrides && currentData.creditOverrides[ik]) return currentData.creditOverrides[ik];
+  // 1) live referrer fields if the loan carried them
+  if(l.referredBy && !isNonProducer(l.referredBy)) return l.referredBy.toString().trim();
+  if(l.productionAssistant && !isNonProducer(l.productionAssistant)) return l.productionAssistant.toString().trim();
+  // 2) embedded correction map by loan-ID prefix
+  if(l.loanId){
+    const pref = String(l.loanId).slice(0,11);
+    if(CREDIT_FIX.p[pref]) return CREDIT_FIX.p[pref];
+  }
+  // 3) embedded correction map by client surname
+  if(l.clientName){
+    const key = String(l.clientName).trim().toLowerCase();
+    if(CREDIT_FIX.c[key]) return CREDIT_FIX.c[key];
+  }
+  // 4) Unknown — needs manual assignment
+  return null;
 }
 
 // ═══════════════════════════════════════════
