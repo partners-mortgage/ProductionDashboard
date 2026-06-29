@@ -870,9 +870,10 @@ nav.mobile-tabs {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
-  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  /* Keep the big hero number inside its card */
-  .kpi-card.featured .kpi-value, .kpi-value { font-size: 30px !important; word-break: break-word; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+  /* Keep big numbers intact — never break mid-digit, scale the font to fit the card */
+  .kpi-value { font-size: clamp(20px, 6.4vw, 28px) !important; word-break: normal !important; overflow-wrap: normal !important; white-space: nowrap; line-height: 1.12; letter-spacing: -0.5px; }
+  .kpi-card.featured .kpi-value { font-size: clamp(26px, 8.5vw, 36px) !important; white-space: nowrap; }
   .filter-select { max-width: 100%; }
   /* Stack any 2-up chart grids */
   .charts-row, [style*="grid-template-columns:1fr 1fr"], [style*="grid-template-columns: 1fr 1fr"] {
