@@ -1204,6 +1204,7 @@ nav.mobile-tabs {
 .m-a2hs-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .m-a2hs-add{ background:var(--teal); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-family:var(--font); font-size:13px; font-weight:800; cursor:pointer; }
 .m-a2hs-x{ background:none; border:none; color:var(--text-tertiary); font-size:15px; cursor:pointer; padding:6px; }
+.me-tag-inline{ display:inline-block; margin-left:7px; font-size:9px; font-weight:800; letter-spacing:.5px; background:var(--teal); color:#fff; padding:1px 7px; border-radius:20px; vertical-align:middle; }
 .m-rankhero{ display:none; }
 @media (max-width:768px){ .m-rankhero.has{ display:block; } }
 </style>
@@ -2713,12 +2714,11 @@ function tvmTile(opts){
 }
 
 function tvmProductionScene(){
-  // MTD production snapshot — fall back to YTD if the current month has no funded data yet
-  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  // Show the most recent month that actually has funded production (avoids dropping to YTD early in a month)
   const corrected = filterData(currentData.ytdData, {timePeriod:'YTD_2026', loFilter:'All'});
-  let mtd = corrected.filter(l=>toDateStr(l.fundingDate).slice(0,7)===curM);
-  let scope='Month to Date';
-  if(!mtd.length){ mtd = corrected; scope='Year to Date'; }
+  const mk = latestMonthKey();
+  let mtd = corrected.filter(l=>toDateStr(l.fundingDate).slice(0,7)===mk);
+  let scope = tvMonthScope(mk);
   const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
   const units=mtd.length;
   const avg=units?vol/units:0;
@@ -2736,9 +2736,9 @@ function tvmProductionScene(){
 }
 
 function tvmLeaderboardScene(){
-  let {leads}=productionForPeriod('MTD');
-  let scope='Month to Date';
-  if(!leads.length){ ({leads}=productionForPeriod('YTD')); scope='Year to Date'; }
+  const mk=latestMonthKey();
+  let {leads}=productionForPeriod(mk);
+  let scope=tvMonthScope(mk);
   const ranked=rankLOs(leads,'volume');
   return tvmRankScene({
     eyebrow:`Producers · ${scope}`, headline:'Top Producers',
@@ -2760,8 +2760,8 @@ function tvmLockLeadersScene(){
 }
 
 function tvmLeadLeadersScene(){
-  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  let pool=(currentData.monthlyLeads||{})[curM]||[]; let scope='Month to Date';
+  const mk=latestLeadMonthKey();
+  let pool=(currentData.monthlyLeads||{})[mk]||[]; let scope=tvMonthScope(mk);
   if(!pool.length){ pool=(typeof allLeads==='function')?allLeads():[]; scope='Year to Date'; }
   const t={};
   pool.forEach(l=>{ const n=l.loName||l.owner||'Unassigned'; if(!t[n])t[n]={name:n,units:0,vol:0}; t[n].units++; t[n].vol+=(l.loanAmount||0); });
@@ -2830,9 +2830,9 @@ function tvmPipelineScene(){
 }
 
 function tvmLeadsScene(){
-  const now=new Date(); const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  let mtd=(currentData.monthlyLeads||{})[curM]||[];
-  let scope='Month to Date';
+  const mk=latestLeadMonthKey();
+  let mtd=(currentData.monthlyLeads||{})[mk]||[];
+  let scope=tvMonthScope(mk);
   if(!mtd.length){ mtd=(typeof allLeads==='function')?allLeads():[]; scope='Year to Date'; }
   const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
   const today=new Date().toISOString().split('T')[0];
@@ -2906,7 +2906,7 @@ function _tickerMover(){
 function buildTickerItems(){
   let items=[];
   try{
-    let prod=productionForPeriod('MTD');
+    let prod=productionForPeriod(latestMonthKey());
     if(!prod.leads||!prod.leads.length) prod=productionForPeriod('YTD');
     const lab=prod.label;
     const pool=prod.leads||[];
@@ -5433,8 +5433,9 @@ function renderLockTable(pl) {
   let rows = lockLOs.map(([name, d]) => {
     const avg = d.vol / d.units;
     const expBadge = d.expiringSoon > 0 ? `<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;background:var(--amber-bg);color:#92400E;">${d.expiringSoon}</span>` : '<span style="color:var(--text-tertiary);">—</span>';
-    return `<tr>
-      <td style="font-weight:600;">${name}</td>
+    const isMe=(typeof getMe==='function')&&getMe()&&name===getMe();
+    return `<tr style="${isMe?'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);':''}">
+      <td style="font-weight:${isMe?'800':'600'};">${name}${isMe?'<span class="me-tag-inline">YOU</span>':''}</td>
       <td style="text-align:right;font-weight:700;">${d.units}</td>
       <td style="text-align:right;font-weight:700;">${fmtK(d.vol)}</td>
       <td style="text-align:right;color:var(--text-secondary);">${fmtK(avg)}</td>
@@ -5684,11 +5685,12 @@ function updateLeaderboard(data){
     const barPct = Math.round((d[sortKey]/maxVal)*100);
     // Brand rank badges: #1 amber, #2 warm-gray, #3 gold
     const rankColors = i===0 ? 'background:var(--amber);color:#fff;' : i===1 ? 'background:var(--warm);color:#fff;' : i===2 ? 'background:var(--gold);color:#5A4A1F;' : 'background:var(--bg-warm);color:var(--text-tertiary);';
-    const rowBg = i===0 ? 'background:var(--teal-light);' : '';
+    const isMe = (typeof getMe==='function') && getMe() && name===getMe();
+    const rowBg = isMe ? 'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);' : (i===0 ? 'background:var(--teal-light);' : '');
     return `<tr style="${rowBg}">
       <td style="padding:9px 6px 9px 8px;"><div style="width:24px;height:24px;border-radius:50%;${rankColors}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
-      <td style="padding:9px 0;font-weight:${i===0?'800':'600'};">
-        <div>${name}</div>
+      <td style="padding:9px 0;font-weight:${(i===0||isMe)?'800':'600'};">
+        <div>${name}${isMe?'<span class="me-tag-inline">YOU</span>':''}</div>
         <div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden;"><div style="height:100%;width:${barPct}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div>
       </td>
       <td style="padding:9px 8px 9px 0;text-align:right;color:var(--text-secondary);vertical-align:top;">${d.units}</td>
@@ -5803,9 +5805,10 @@ function renderLeadLeaderboard(leads){
   const max=sorted[0][1].n||1;
   el.innerHTML=sorted.map(([name,d],i)=>{
     const rc=i===0?'background:var(--amber);color:#fff;':i===1?'background:var(--warm);color:#fff;':i===2?'background:var(--gold);color:#5A4A1F;':'background:var(--bg-warm);color:var(--text-tertiary);';
-    const rb=i===0?'background:var(--teal-light);':'';
+    const isMe=(typeof getMe==='function')&&getMe()&&name===getMe();
+    const rb=isMe?'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);':(i===0?'background:var(--teal-light);':'');
     return `<tr style="${rb}"><td style="padding:8px 6px 8px 8px;"><div style="width:23px;height:23px;border-radius:50%;${rc}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
-      <td style="padding:8px 0;font-weight:${i===0?'800':'600'};"><div>${name}</div><div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;"><div style="height:100%;width:${Math.round(d.n/max*100)}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div></td>
+      <td style="padding:8px 0;font-weight:${(i===0||isMe)?'800':'600'};"><div>${name}${isMe?'<span class="me-tag-inline">YOU</span>':''}</div><div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;"><div style="height:100%;width:${Math.round(d.n/max*100)}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div></td>
       <td style="padding:8px 8px 8px 0;text-align:right;font-weight:700;vertical-align:top;">${d.n}</td>
       <td style="padding:8px 0;text-align:right;color:var(--text-secondary);vertical-align:top;">${fmtK(d.v)}</td></tr>`;
   }).join('');
@@ -5978,6 +5981,32 @@ function productionForPeriod(period){
   else { leads=corrected.filter(l=>inMonth(l,curM)); label='MTD'; }
   return {leads, label};
 }
+// Most recent month (YYYY-MM) that has funded production — prefers the current month when it has data
+function latestMonthKey(){
+  const now=new Date();
+  const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const corrected = filterData(currentData.ytdData||[], {timePeriod:'YTD_2026', loFilter:'All'});
+  const months=[...new Set(corrected.map(l=>toDateStr(l.fundingDate).slice(0,7)).filter(m=>/^\d{4}-\d\d$/.test(m)))].sort();
+  if(!months.length) return curM;
+  return months.includes(curM) ? curM : months[months.length-1];
+}
+// Most recent month with lead activity
+function latestLeadMonthKey(){
+  const now=new Date();
+  const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const ml=currentData.monthlyLeads||{};
+  const months=Object.keys(ml).filter(m=>/^\d{4}-\d\d$/.test(m) && (ml[m]||[]).length).sort();
+  if(!months.length) return curM;
+  return months.includes(curM) ? curM : months[months.length-1];
+}
+// Human scope label: "Month to Date" for the current month, otherwise the full month name
+function tvMonthScope(mk){
+  const now=new Date();
+  const curM=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if(mk===curM) return 'Month to Date';
+  const mn=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return mn[parseInt(mk.slice(5))-1];
+}
 // Rank LOs by a metric within a set of loans
 function rankLOs(loans, metric){
   const t={};
@@ -6062,12 +6091,13 @@ function updateLeaderboardsView(){
   };
   $('lbTableBody').innerHTML=ranked.map((r,i)=>{
     const rc=i===0?'background:var(--amber);color:#fff;':i===1?'background:var(--warm);color:#fff;':i===2?'background:var(--gold);color:#5A4A1F;':'background:var(--bg-warm);color:var(--text-tertiary);';
-    const rowBg=i===0?'background:var(--teal-light);':'';
+    const isMe=(typeof getMe==='function')&&getMe()&&r.name===getMe();
+    const rowBg=isMe?'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);':(i===0?'background:var(--teal-light);':'');
     const streak = i===0 ? loStreak(r.name) : 0;
     const streakCell = streak>=2 ? `<span style="font-size:11px;color:var(--purple);font-weight:700;">🔥 ${streak}mo</span>` : '<span style="color:var(--text-tertiary);">—</span>';
     return `<tr style="${rowBg}">
       <td style="padding:9px 6px;"><div style="width:24px;height:24px;border-radius:50%;${rc}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto;">${i+1}</div></td>
-      <td style="padding:9px 0;font-weight:${i===0?'800':'600'};">${r.name}</td>
+      <td style="padding:9px 0;font-weight:${(i===0||isMe)?'800':'600'};">${r.name}${isMe?'<span class="me-tag-inline">YOU</span>':''}</td>
       <td style="padding:9px 8px;text-align:right;color:var(--text-secondary);">${r.units}</td>
       <td style="padding:9px 0;text-align:right;font-weight:700;">${fmtK(r.vol)}</td>
       <td style="padding:9px 0 9px 16px;"><div style="height:7px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="height:100%;width:${Math.round(metricVal(r)/maxVal*100)}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:4px;"></div></div></td>
