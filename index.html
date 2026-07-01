@@ -2388,6 +2388,7 @@ async function saveToCloud() {
       goals: JSON.stringify(currentData.goals),
       creditOverrides: JSON.stringify(currentData.creditOverrides || {}),
       leifDecisions: JSON.stringify(currentData.leifDecisions || {}),
+      loanReassignments: JSON.stringify(currentData.loanReassignments || {}),
       screenshotStatuses: JSON.stringify(currentData._screenshotStatuses || []),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedBy: navigator.userAgent.substring(0, 50)
@@ -2450,6 +2451,12 @@ async function loadFromCloud() {
     const cloudLeif = JSON.parse(d.leifDecisions || '{}');
     if(cloudLeif && Object.keys(cloudLeif).length){
       currentData.leifDecisions = Object.assign({}, currentData.leifDecisions, cloudLeif);
+      updated = true;
+    }
+    // Merge manual per-loan reassignments (cloud wins on conflict)
+    const cloudReassign = JSON.parse(d.loanReassignments || '{}');
+    if(cloudReassign && Object.keys(cloudReassign).length){
+      currentData.loanReassignments = Object.assign({}, currentData.loanReassignments, cloudReassign);
       updated = true;
     }
     if(cloudScreenshot.length > 0) currentData._screenshotStatuses = cloudScreenshot;
@@ -2722,7 +2729,7 @@ function tvmProductionScene(){
   const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
   const units=mtd.length;
   const avg=units?vol/units:0;
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const todayLoans=corrected.filter(l=>toDateStr(l.fundingDate)===today);
   const purch=mtd.filter(l=>/purch/i.test(l.loanPurpose||'')).length;
   const purchPct=units?Math.round(purch/units*100):0;
@@ -2835,7 +2842,7 @@ function tvmLeadsScene(){
   let scope=tvMonthScope(mk);
   if(!mtd.length){ mtd=(typeof allLeads==='function')?allLeads():[]; scope='Year to Date'; }
   const vol=mtd.reduce((s,l)=>s+l.loanAmount,0);
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const todayN=(function(){let n=0;Object.values(currentData.monthlyLeads||{}).forEach(a=>a.forEach(l=>{if(toDateStr(l.leadDate)===today)n++;}));return n;})();
   const conv=(typeof computeLeadConversion==='function')?computeLeadConversion():{overallPct:null};
   return `<div class="tvm-scene tvm-grid-prod">
@@ -3166,7 +3173,7 @@ function renderMobileHome(){
   // ── Team pulse ──
   const ytd=productionForPeriod('YTD');
   const teamVol=(ytd.leads||[]).reduce((s,l)=>s+l.loanAmount,0);
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const todayVol=(currentData.ytdData||[]).filter(l=>toDateStr(l.fundingDate)===today).reduce((s,l)=>s+l.loanAmount,0);
   const annual=currentData.goals&&currentData.goals.annualVolume;
   let pace='—';
@@ -3204,7 +3211,7 @@ function renderMobileHome(){
 function haptic(ms){ try{ if(navigator.vibrate) navigator.vibrate(ms||8); }catch(e){} }
 
 function fundedTodayForMe(me){
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const mine=(currentData.ytdData||[]).filter(l=>l.loName===me && toDateStr(l.fundingDate)===today);
   return {count:mine.length, vol:mine.reduce((s,l)=>s+(l.loanAmount||0),0)};
 }
@@ -3437,6 +3444,7 @@ let currentData = {
   goals: { annualVolume: 240000000, annualUnits: 420, monthlyTarget: 20000000 },
   creditOverrides: {}, // { 'clientname': 'Assigned LO' } — manual fixes for David/Rachael loans, persisted to Firebase
   leifDecisions: {}, // { 'loankey': 'referred'|'leif' } — per-loan confirmations for Leif Potter referred loans
+  loanReassignments: {}, // { 'loankey': 'Assigned LO' } — manual per-loan credit overrides, persisted to Firebase
   pipelineUpdatedAt: 0, // timestamp of last pipeline upload — newer snapshot wins over bigger
   tvSlides: [], // break-room full-screen slides (birthdays etc.) for Modular TV mode
   currentView: 'dashboard'
@@ -3794,14 +3802,137 @@ function showToast(msg, isError=false) {
 // David/Rachael loans that can't be auto-resolved → ask who to credit, store in Firebase.
 // ═══════════════════════════════════════════
 function knownLOList(){
-  // Build the LO picklist from loans already in the data (excludes non-producers)
+  // Build the LO picklist from every source (funded uploads, YTD, leads, pipeline, referrers, prior reassignments)
   const set = new Set();
-  const add = n => { const v=(n||'').toString().trim(); if(v && !isNonProducer(v) && v!=='Unassigned (needs review)' && v!=='Unattributed') set.add(v); };
-  Object.values(currentData.monthlyProduction||{}).forEach(b=>(b.loans||[]).forEach(l=>add(l.loName)));
-  (currentData.pipeline||[]).forEach(l=>add(l.loName));
-  // Always include the common referrers from our correction map
+  const add = n => { const v=(n||'').toString().trim(); if(v && !isNonProducer(v) && v!=='Unassigned (needs review)' && v!=='Unattributed' && v!=='Unknown LO') set.add(v); };
+  const scan = l => { if(!l) return; add(l.loName); add(l.owner); add(l.referredBy); add(l.productionAssistant); };
+  Object.values(currentData.monthlyProduction||{}).forEach(b=>(b.loans||[]).forEach(scan));
+  (currentData.ytdData||[]).forEach(scan);
+  (currentData.pipeline||[]).forEach(scan);
+  Object.values(currentData.monthlyLeads||{}).forEach(arr=>(arr||[]).forEach(scan));
+  Object.values(currentData.loanReassignments||{}).forEach(add);
   Object.values(CREDIT_FIX.p).forEach(add); Object.values(CREDIT_FIX.c).forEach(add);
   return Array.from(set).sort();
+}
+
+// ── Producer drill-down drawer: view a producer's funded loans, reassign credit (admin) ──
+let _producerDrawerName='';
+function _periodLabelFromFilter(){
+  const tp=(currentData.filters&&currentData.filters.timePeriod)||'YTD_2026';
+  if(tp==='YTD_2026') return 'Year to Date';
+  if(tp==='MTD'||/MTD/.test(tp)) return 'Month to Date';
+  let m=tp.match(/^Q([1-4])_2026$/); if(m) return 'Q'+m[1]+' 2026';
+  m=tp.match(/^([A-Z][a-z]{2})_2026$/); if(m){ const full={Jan:'January',Feb:'February',Mar:'March',Apr:'April',May:'May',Jun:'June',Jul:'July',Aug:'August',Sep:'September',Oct:'October',Nov:'November',Dec:'December'}; return (full[m[1]]||m[1])+' 2026'; }
+  return 'Selected Period';
+}
+function showProducerLoans(name){
+  if(!name) return;
+  _producerDrawerName=name;
+  const admin = window._adminUnlocked === true;
+  const src = (Array.isArray(_lbData) && _lbData.length) ? _lbData : filterData(currentData.ytdData, currentData.filters);
+  const loans = src.filter(l=>l.loName===name).slice().sort((a,b)=> (toDateStr(b.fundingDate)||'').localeCompare(toDateStr(a.fundingDate)||''));
+  const total = loans.reduce((s,l)=>s+(l.loanAmount||0),0);
+  const los = knownLOList();
+  const period = _periodLabelFromFilter();
+
+  const rows = loans.map(l=>{
+    const key = reassignKey(l);
+    const leifkey = (isLeif(l.owner) && (l.referredBy||'').toString().trim()) ? leifLoanKey(l) : '';
+    const idStr = (l.loanId||'').toString().trim();
+    const loanNo = (l.loanNumber||'').toString().trim() || (/^\d{6,10}$/.test(idStr) ? idStr : '') || (l.losFileName||'').toString().trim();
+    const internalRef = !loanNo ? idStr : '';
+    const meta = `${toDateStr(l.fundingDate)||'—'} · ${_esc(l.loanPurpose||'—')} · ${loanNo?('Loan #'+_esc(loanNo)):('ref '+_esc(internalRef.slice(0,14)))}`;
+    const ctxBits=[];
+    if(l.owner && l.owner!==name) ctxBits.push('Owner: '+_esc(l.owner));
+    if(l.referredBy && l.referredBy!==name) ctxBits.push('Referred by: '+_esc(l.referredBy));
+    const ctx = ctxBits.length ? `<div style="font-size:11px;color:var(--text-tertiary);margin-top:2px;">${ctxBits.join(' · ')}</div>` : '';
+    const curOverride = (currentData.loanReassignments&&currentData.loanReassignments[key])||'';
+    const control = admin ? `<select class="prod-pick" data-key="${_esc(key)}"${leifkey?` data-leifkey="${_esc(leifkey)}"`:''} style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;max-width:190px;">
+        <option value=""${curOverride?'':' selected'}>— auto (keep as ${_esc(name)}) —</option>
+        ${los.map(n=>`<option value="${_esc(n)}"${n===curOverride?' selected':''}>${_esc(n)}</option>`).join('')}
+        <option value="__custom__">Other (type name)…</option>
+      </select>` : '';
+    return `<div style="display:grid;grid-template-columns:1fr ${admin?'200px':'0px'};gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:600;font-size:13.5px;">${_esc(l.clientName||'(no client name)')} <span style="color:var(--text-tertiary);font-weight:500;">${l.loanAmount?fmtK(l.loanAmount):''}</span></div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">${meta}</div>
+        ${ctx}
+      </div>
+      ${control}
+    </div>`;
+  }).join('') || `<div style="padding:16px 0;color:var(--text-tertiary);font-size:13px;">No loans credited to ${_esc(name)} in this period.</div>`;
+
+  const footer = admin
+    ? `<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;">
+         <div style="font-size:11.5px;color:var(--text-tertiary);">Saved for all future uploads.</div>
+         <div style="display:flex;gap:10px;"><button class="btn" onclick="dismissProducerLoans()">Close</button><button class="btn btn-primary" onclick="saveProducerReassignments()">Save Reassignments</button></div>
+       </div>`
+    : `<div style="padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+         <div style="display:flex;align-items:center;gap:8px;">
+           <input id="prodPinInput" type="password" inputmode="numeric" placeholder="Executive PIN" onkeydown="if(event.key==='Enter')unlockReassign()" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;width:140px;font-family:inherit;">
+           <button class="btn btn-primary" onclick="unlockReassign()">Unlock to reassign</button>
+         </div>
+         <button class="btn" onclick="dismissProducerLoans()">Close</button>
+       </div>`;
+
+  const existing=document.getElementById('producerModal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='producerModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,33,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:16px;max-width:600px;width:100%;max-height:86vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <div style="font-size:17px;font-weight:800;">${_esc(name)} <span style="color:var(--text-tertiary);font-weight:600;font-size:14px;">— ${loans.length} loan${loans.length===1?'':'s'} · ${fmtK(total)}</span></div>
+          <div style="font-size:12.5px;color:var(--text-secondary);margin-top:3px;">${period} · ${admin?'Reassign any loan to the producer who earned it.':'Read-only — unlock with the Executive PIN to reassign.'}</div>
+        </div>
+        <button class="btn" onclick="dismissProducerLoans()" style="padding:4px 10px;font-size:16px;line-height:1;">×</button>
+      </div>
+      <div style="padding:8px 24px;overflow-y:auto;">${rows}</div>
+      ${footer}
+    </div>`;
+  modal.onclick=function(){ dismissProducerLoans(); };
+  document.body.appendChild(modal);
+  modal.querySelectorAll('.prod-pick').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      if(e.target.value==='__custom__'){
+        const nm=prompt('Type the loan officer name to credit:');
+        if(nm && nm.trim()){
+          const o=document.createElement('option'); o.value=nm.trim(); o.textContent=nm.trim(); o.selected=true;
+          e.target.insertBefore(o, e.target.querySelector('option[value="__custom__"]'));
+        } else { e.target.value=''; }
+      }
+    });
+  });
+}
+function dismissProducerLoans(){ const m=document.getElementById('producerModal'); if(m) m.remove(); }
+function unlockReassign(){
+  const inp=document.getElementById('prodPinInput'); if(!inp) return;
+  if(inp.value===EXECUTIVE_PIN){ window._adminUnlocked=true; showToast('Reassignment unlocked'); showProducerLoans(_producerDrawerName); }
+  else { showToast('Incorrect PIN', true); inp.value=''; inp.focus(); }
+}
+async function saveProducerReassignments(){
+  const sels=document.querySelectorAll('#producerModal .prod-pick');
+  let changed=0;
+  sels.forEach(sel=>{
+    const key=sel.getAttribute('data-key'); if(!key) return;
+    const leifkey=sel.getAttribute('data-leifkey')||'';
+    const val=(sel.value||'').trim();
+    const cur=(currentData.loanReassignments&&currentData.loanReassignments[key])||'';
+    if(!val || val==='__custom__' || val===_producerDrawerName){
+      if(cur){ delete currentData.loanReassignments[key]; changed++; }
+      if(leifkey && currentData.leifDecisions && currentData.leifDecisions[leifkey]) delete currentData.leifDecisions[leifkey];
+    } else {
+      if(cur!==val){ currentData.loanReassignments[key]=val; changed++; }
+      if(leifkey){ currentData.leifDecisions[leifkey]='leif'; }
+    }
+  });
+  try{ await saveToCloud(); }catch(e){}
+  const f=filterData(currentData.ytdData, currentData.filters);
+  updateKPIs(f); updateCharts(f); updateLeaderboard(f); updateBanner(currentData.filters.timePeriod, f.length);
+  if(typeof updatePipelineKPIs==='function'){ try{ updatePipelineKPIs(); }catch(e){} }
+  showToast(changed?`Saved ${changed} reassignment${changed===1?'':'s'}`:'No changes');
+  dismissProducerLoans();
 }
 
 function showCreditPrompt(){
@@ -4179,11 +4310,20 @@ function reattributeStoredCredits(){
   return fixed;
 }
 
+// Pull the 8-9 digit LOS / Arbor file number (e.g. 16792335) — how the team identifies loans.
+function extractLoanNumber(r){
+  if(!r) return '';
+  const cand = [r['LOS File Name'], r['Loan Number'], r['Loan #'], r['Loan Number (LOS)'], r['LoanNumber'], r['Loan No']];
+  for(let i=0;i<cand.length;i++){ const v=(cand[i]==null?'':cand[i]).toString().trim(); if(/^\d{6,10}$/.test(v)) return v; }
+  const t=(r['Topic']||'').toString(); const m=t.match(/\b(\d{6,10})\b/); if(m) return m[1];
+  const id=(r['(Do Not Modify) Loan']||'').toString(); const m2=id.match(/\b(\d{6,10})\b/); if(m2) return m2[1];
+  return '';
+}
 function processRobustProductionData(json){
   return json.map(r=>({
     fundingDate:formatDate(r['Funded Date']),loanAmount:parseFloat((r['Loan Amount']||0).toString().replace(/[$,]/g,'')),
     loName:creditedLO(r['Owner'], r['Referred By (TL/OS)'], r['Production Assistant']),clientName:extractClientName(r['Topic']||'Unknown'),
-    loanPurpose:r['Purpose of loan']||'Purchase',loanId:r['(Do Not Modify) Loan']||'',
+    loanPurpose:r['Purpose of loan']||'Purchase',loanId:r['(Do Not Modify) Loan']||'',loanNumber:extractLoanNumber(r),
     owner:(r['Owner']||'').toString().trim(), referredBy:(r['Referred By (TL/OS)']||'').toString().trim(), productionAssistant:(r['Production Assistant']||'').toString().trim(),
     interestRate:parseFloat(r['Interest Rate']||0),lender:'Partners Mortgage'
   })).filter(l=>l.loanAmount>0&&l.fundingDate&&l.fundingDate.startsWith('2026')&&new Date(l.fundingDate)<=new Date());
@@ -4429,13 +4569,27 @@ function classifyStatus(r, statusColName) {
   return 'Disclosed';
 }
 
+// Pacific-time calendar date (America/Los_Angeles) for any Date instant, as YYYY-MM-DD.
+function pacificDateStr(d){
+  if(Object.prototype.toString.call(d)!=='[object Date]' || isNaN(d.getTime())) return null;
+  try{ return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Los_Angeles',year:'numeric',month:'2-digit',day:'2-digit'}).format(d); }
+  catch(e){ return d.toISOString().split('T')[0]; }
+}
+// Normalize any incoming date to a Pacific-time YYYY-MM-DD string.
+// Bare calendar dates (no time) are kept exactly so they never shift a day; anything with a
+// time component (or an Excel serial) is converted from its instant into Pacific time.
 function formatDate(v){
-  if(!v) return null;
+  if(v==null||v==='') return null;
   try{
-    if(typeof v==='number'){const d=new Date((v-25569)*86400*1000);return d.toISOString().split('T')[0];}
-    if(typeof v==='string'){const d=new Date(v);if(!isNaN(d.getTime()))return d.toISOString().split('T')[0];}
-    return null;
-  }catch(e){return null;}
+    if(typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400*1000)); return isNaN(d.getTime())?null:d.toISOString().split('T')[0]; }
+    const s=v.toString().trim();
+    let m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);          // ISO date-only → keep as-is
+    if(m) return m[1]+'-'+String(m[2]).padStart(2,'0')+'-'+String(m[3]).padStart(2,'0');
+    m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);            // M/D/YYYY date-only → keep as-is
+    if(m) return m[3]+'-'+String(m[1]).padStart(2,'0')+'-'+String(m[2]).padStart(2,'0');
+    const d=new Date(s); if(isNaN(d.getTime())) return null; // has a time → express the instant in Pacific
+    return pacificDateStr(d);
+  }catch(e){ return null; }
 }
 
 function extractClientName(topic){
@@ -4733,6 +4887,7 @@ function saveToLocalStorage(){
     leadsUpdatedAt:currentData.leadsUpdatedAt||0,
     creditOverrides:currentData.creditOverrides||{},
     leifDecisions:currentData.leifDecisions||{},
+    loanReassignments:currentData.loanReassignments||{},
     monthlyProduction:currentData.monthlyProduction,
     lockedMonths:currentData.lockedMonths,
     filters:currentData.filters,
@@ -4748,12 +4903,26 @@ function saveToLocalStorage(){
 function toDateStr(d) {
   if(!d) return '';
   if(typeof d === 'string') return d.substring(0, 10);
-  if(d instanceof Date) return d.toISOString().substring(0, 10);
+  if(d instanceof Date) return pacificDateStr(d) || d.toISOString().substring(0, 10);
   if(typeof d === 'number') { // Excel serial
     const dt = new Date((d - 25569) * 86400000);
     return dt.toISOString().substring(0, 10);
   }
   return String(d).substring(0, 10);
+}
+
+// Escape a string for safe use inside an HTML attribute
+function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Stable per-loan key for manual reassignment overrides. Prefer loanId, then LOS file name,
+// then client+amount. Lowercased so it survives re-uploads that drop referrer columns.
+function reassignKey(l){
+  if(!l) return '';
+  const id = (l.loanId||l.losFileName||'').toString().trim().toLowerCase();
+  if(id) return 'loan:'+id;
+  const c = (l.clientName||'').toString().trim().toLowerCase();
+  if(c) return 'loan:'+c+':'+(l.loanAmount||0);
+  return '';
 }
 
 function filterData(data, filters){
@@ -4803,19 +4972,29 @@ function filterData(data, filters){
   // Remap their loans to the correct LO on every render (KPIs, charts, leaderboard all flow through here).
   const unresolved = [];
   f = f.map(l => {
+    let cur = l;
     // Leif Potter transition-LO rule first (only affects Leif-owned loans with a referrer)
-    if(isLeif(l.owner) && (l.referredBy||'').toString().trim()){
-      const leifTo = applyLeifRule(l);
-      if(leifTo !== l.loName) l = {...l, loName: leifTo};
+    if(isLeif(cur.owner) && (cur.referredBy||'').toString().trim()){
+      const leifTo = applyLeifRule(cur);
+      if(leifTo !== cur.loName) cur = {...cur, loName: leifTo};
     }
-    if(!isNonProducer(l.loName)) return l;
-    const credited = resolveCredit(l);
-    if(credited === null){
-      // Can't determine — queue for the assignment prompt, keep out of producer totals for now
-      unresolved.push(l);
-      return {...l, loName: 'Unassigned (needs review)'};
+    // David Arvidson / Rachael Gaines are never the producer — resolve to the real LO
+    if(isNonProducer(cur.loName)){
+      const credited = resolveCredit(cur);
+      if(credited === null){
+        unresolved.push(cur);
+        cur = {...cur, loName: 'Unassigned (needs review)'};
+      } else if(credited !== cur.loName){
+        cur = {...cur, loName: credited};
+      }
     }
-    return credited === l.loName ? l : {...l, loName: credited};
+    // Manual per-loan reassignment (admin drill-down) always wins over the auto-rules above
+    const rk = reassignKey(cur);
+    if(rk && currentData.loanReassignments && currentData.loanReassignments[rk]){
+      const tgt = currentData.loanReassignments[rk];
+      if(tgt && tgt !== cur.loName) cur = {...cur, loName: tgt};
+    }
+    return cur;
   });
   // Surface any loans needing manual assignment (deduped by client)
   if(unresolved.length){
@@ -4878,7 +5057,7 @@ function updateKPIs(data){
   const annual=currentData.goals.annualVolume;
 
   // Today stats
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const todayLoans=data.filter(l=>l.fundingDate===today);
   const todayVol=todayLoans.reduce((s,l)=>s+l.loanAmount,0);
 
@@ -5585,7 +5764,7 @@ function updateActivityChart(data){
   for(let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = pacificDateStr(d);
     const dayLabel = days <= 7
       ? d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })
       : d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
@@ -5687,10 +5866,10 @@ function updateLeaderboard(data){
     const rankColors = i===0 ? 'background:var(--amber);color:#fff;' : i===1 ? 'background:var(--warm);color:#fff;' : i===2 ? 'background:var(--gold);color:#5A4A1F;' : 'background:var(--bg-warm);color:var(--text-tertiary);';
     const isMe = (typeof getMe==='function') && getMe() && name===getMe();
     const rowBg = isMe ? 'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);' : (i===0 ? 'background:var(--teal-light);' : '');
-    return `<tr style="${rowBg}">
+    return `<tr class="lb-drill" data-lo="${_esc(name)}" onclick="showProducerLoans(this.dataset.lo)" title="View &amp; reassign ${_esc(name)}'s loans" style="cursor:pointer;${rowBg}">
       <td style="padding:9px 6px 9px 8px;"><div style="width:24px;height:24px;border-radius:50%;${rankColors}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
       <td style="padding:9px 0;font-weight:${(i===0||isMe)?'800':'600'};">
-        <div>${name}${isMe?'<span class="me-tag-inline">YOU</span>':''}</div>
+        <div style="display:flex;align-items:center;gap:6px;">${name}${isMe?'<span class="me-tag-inline">YOU</span>':''}<span style="opacity:0.4;font-size:11px;">›</span></div>
         <div style="height:3px;border-radius:2px;background:var(--border);margin-top:4px;overflow:hidden;"><div style="height:100%;width:${barPct}%;background:${i===0?'var(--amber)':'var(--teal)'};border-radius:2px;"></div></div>
       </td>
       <td style="padding:9px 8px 9px 0;text-align:right;color:var(--text-secondary);vertical-align:top;">${d.units}</td>
@@ -5748,7 +5927,7 @@ function updateLeadsView(){
   const sel = leadsForPeriod();
   const periodLeads = sel.leads;
   const pVol = periodLeads.reduce((s,l)=>s+l.loanAmount,0);
-  const today = new Date().toISOString().split('T')[0];
+  const today = pacificDateStr(new Date());
   const todayLeads = all.filter(l=>toDateStr(l.leadDate)===today);
   const todayVol = todayLeads.reduce((s,l)=>s+l.loanAmount,0);
   const avg = periodLeads.length? pVol/periodLeads.length : 0;
@@ -5956,7 +6135,7 @@ function updateLeadsSummary(){
   host.style.display='';
   const mtd=leadsForCurrentMonth();
   const mtdVol=mtd.reduce((s,l)=>s+l.loanAmount,0);
-  const today=new Date().toISOString().split('T')[0];
+  const today=pacificDateStr(new Date());
   const todayN=all.filter(l=>toDateStr(l.leadDate)===today).length;
   if($('sumLeadMtd')) $('sumLeadMtd').textContent=mtd.length;
   if($('sumLeadVol')) $('sumLeadVol').textContent=fmtK(mtdVol);
@@ -6204,7 +6383,7 @@ function exportData(){
   if(!f.length){showToast('No data to export',true);return;}
   const csv='Funding Date,Amount,LO,Client,Purpose\n'+f.map(l=>`${l.fundingDate},${l.loanAmount},${l.loName},${l.clientName},${l.loanPurpose}`).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`partners_production_${new Date().toISOString().split('T')[0]}.csv`;a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`partners_production_${pacificDateStr(new Date())}.csv`;a.click();
   showToast(`Exported ${f.length} loans`);
 }
 
@@ -6235,6 +6414,7 @@ document.addEventListener('DOMContentLoaded',function(){
         currentData.leadsUpdatedAt=d.leadsUpdatedAt||0;
         currentData.creditOverrides=d.creditOverrides||{};
         currentData.leifDecisions=d.leifDecisions||{};
+        currentData.loanReassignments=d.loanReassignments||{};
         try { const ts=localStorage.getItem('pm_tvSlides'); if(ts){ const arr=JSON.parse(ts)||[]; currentData.tvSlides=Array.isArray(arr)?arr.map(migrateSlide):[]; } } catch(e){}
         currentData.goals=d.goals||currentData.goals;
         currentData.monthlyProduction=d.monthlyProduction||{};
