@@ -3699,6 +3699,7 @@ function showView(id) {
   if (id === 'slidesStudio') { try{ renderSlideManager(); initTvSlideDropZone(); }catch(e){ console.warn('slides studio:', e); } }
   if (id === 'dashboard') { try{ renderMobileHome(); _initPTR(); _maybeShowA2HS(); var _t=$('mobileTabs'); if(_t&&!_t._hap){ _t._hap=1; _t.addEventListener('click', function(){ haptic(6); }); } }catch(e){ console.warn('mobile home:', e); } }
   if (id === 'leads' || id === 'pipeline') { try{ renderCategoryHeroes(); }catch(e){} }
+  try{ refreshPeriodSelects(); }catch(e){}
   if (id === 'leads') { try { updateLeadsView(); } catch(e){ console.warn('Leads view:', e); } }
   if (id === 'leaderboards') { try { updateLeaderboardsView(); } catch(e){ console.warn('Leaderboards view:', e); } }
   if (id === 'analytics') { try { updateAnalyticsView(); } catch(e){ console.warn('Analytics view:', e); } }
@@ -5115,6 +5116,7 @@ function updateKPIs(data){
   drawHeroSparkline();
   try{ refreshTicker(); }catch(e){ console.warn('ticker refresh', e); }
   try{ renderCategoryHeroes(); }catch(e){}
+  try{ refreshPeriodSelects(); }catch(e){}
   try{ renderMobileHome(); }catch(e){ console.warn('mobile home', e); }
 }
 
@@ -6181,6 +6183,25 @@ function monthsWithData(){
   return [...new Set(corrected.map(l=>toDateStr(l.fundingDate).slice(0,7)).filter(m=>/^2026-\d\d$/.test(m)))].sort();
 }
 function monthName(mk){ const mn=['January','February','March','April','May','June','July','August','September','October','November','December']; return mn[parseInt((mk||'').slice(5))-1]||mk; }
+// Rebuild the period dropdowns (Analytics, Ranks, Leads) from the data so month options always
+// reflect what's actually funded/led — and a new month (e.g. July) appears the moment it's uploaded.
+function refreshPeriodSelects(){
+  const funded = monthsWithData().slice().reverse(); // newest first
+  const leadMonths = Object.keys(currentData.monthlyLeads||{}).filter(m=>/^2026-\d\d$/.test(m) && (currentData.monthlyLeads[m]||[]).length).sort().reverse();
+  const cfgs = [
+    {id:'anPeriod', head:[['YTD','Year to Date'],['Q1','Q1'],['Q2','Q2'],['Q3','Q3'],['Q4','Q4']], months:funded},
+    {id:'lbPeriod', head:[['YTD','Year to Date'],['Q1','Q1'],['Q2','Q2'],['Q3','Q3'],['Q4','Q4']], months:funded},
+    {id:'leadPeriodFilter', head:[['MTD','Month to Date'],['YTD','Year to Date']], months:leadMonths},
+  ];
+  cfgs.forEach(cfg=>{
+    const sel=document.getElementById(cfg.id); if(!sel) return;
+    const cur=sel.value;
+    let html=cfg.head.map(([v,l])=>`<option value="${v}">${l}</option>`).join('');
+    html+=cfg.months.map(mk=>`<option value="${mk}">${monthName(mk)}</option>`).join('');
+    sel.innerHTML=html;
+    if([...sel.options].some(o=>o.value===cur)) sel.value=cur; else sel.value=cfg.head[0][0];
+  });
+}
 // Most recent month with lead activity
 function latestLeadMonthKey(){
   const now=new Date();
