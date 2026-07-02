@@ -1117,6 +1117,8 @@ nav.mobile-tabs {
 .m-pillrow{ display:flex; gap:6px; }
 .m-pill{ font-size:11.5px; font-weight:700; padding:6px 11px; border-radius:30px; border:1px solid var(--border); background:var(--card); color:var(--text-secondary); cursor:pointer; }
 .m-pill.on{ background:var(--teal); color:#fff; border-color:var(--teal); }
+.m-monthpick{ font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:30px; border:1px solid var(--border); background:var(--card); color:var(--text-secondary); cursor:pointer; font-family:inherit; }
+.m-monthpick.on{ background:var(--teal); color:#fff; border-color:var(--teal); }
 
 /* — Compact podium (top 3) — */
 .m-podium{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; align-items:end; margin-bottom:14px; }
@@ -3024,7 +3026,7 @@ function renderMobileHome(){
 
   const me=getMe();
   const prod=productionForPeriod(_mPeriod);
-  const periodLabel=_mPeriod==='MTD'?'this month':(_mPeriod==='YTD'?'this year':_mPeriod);
+  const periodLabel=_mPeriod==='YTD'?'this year':monthName(_mPeriod);
   const ranked=rankLOs(prod.leads||[], _mMetric);
   const valOf=r=>_mMetric==='units'?r.units:r.vol;
   const fmtVal=r=>_mMetric==='units'?`${r.units}`:fmtK(r.vol);
@@ -3066,9 +3068,10 @@ function renderMobileHome(){
   } else {
     const top3=myRank<=3;
     const medal=top3?`<div class="m-you-medal">${medals[myRank-1]}</div>`:'';
-    // movement vs prior month (only meaningful for MTD/month context)
+    // movement vs prior month (only meaningful when viewing the current month)
     let moveChip='';
-    if(_mPeriod==='MTD'){
+    const _cmk = new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+    if(_mPeriod===_cmk){
       const prior=_rankInMonthOffset(me,1,_mMetric);
       const cur=_rankInMonthOffset(me,0,_mMetric);
       if(prior!=null && cur!=null){
@@ -3187,8 +3190,11 @@ function renderMobileHome(){
     <div class="m-sec">
       <div class="m-sec-title">Top Performers</div>
       <div class="m-pillrow">
-        <button class="m-pill ${_mPeriod==='MTD'?'on':''}" onclick="setMobilePeriod('MTD')">Month</button>
         <button class="m-pill ${_mPeriod==='YTD'?'on':''}" onclick="setMobilePeriod('YTD')">Year</button>
+        <select class="m-monthpick ${_mPeriod!=='YTD'?'on':''}" onchange="if(this.value)setMobilePeriod(this.value)" aria-label="Pick a month">
+          <option value="" ${_mPeriod==='YTD'?'selected':''}>Month ▾</option>
+          ${monthsWithData().slice().reverse().map(mk=>`<option value="${mk}" ${_mPeriod===mk?'selected':''}>${monthName(mk)}</option>`).join('')}
+        </select>
       </div>
     </div>
     <div class="m-pillrow" style="margin:0 2px 12px;">
@@ -6169,6 +6175,12 @@ function latestMonthKey(){
   if(!months.length) return curM;
   return months.includes(curM) ? curM : months[months.length-1];
 }
+// All months (YYYY-MM) that have funded production, ascending. Grows automatically as new data is uploaded.
+function monthsWithData(){
+  const corrected = filterData(currentData.ytdData||[], {timePeriod:'YTD_2026', loFilter:'All'});
+  return [...new Set(corrected.map(l=>toDateStr(l.fundingDate).slice(0,7)).filter(m=>/^2026-\d\d$/.test(m)))].sort();
+}
+function monthName(mk){ const mn=['January','February','March','April','May','June','July','August','September','October','November','December']; return mn[parseInt((mk||'').slice(5))-1]||mk; }
 // Most recent month with lead activity
 function latestLeadMonthKey(){
   const now=new Date();
