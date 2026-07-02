@@ -1206,6 +1206,7 @@ nav.mobile-tabs {
 .m-a2hs-actions{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .m-a2hs-add{ background:var(--teal); color:#fff; border:none; border-radius:9px; padding:8px 14px; font-family:var(--font); font-size:13px; font-weight:800; cursor:pointer; }
 .m-a2hs-x{ background:none; border:none; color:var(--text-tertiary); font-size:15px; cursor:pointer; padding:6px; }
+.pm-build{ font-size:9px; font-weight:800; letter-spacing:.5px; color:var(--text-tertiary); opacity:.55; padding:0 10px; flex-shrink:0; align-self:center; }
 .me-tag-inline{ display:inline-block; margin-left:7px; font-size:9px; font-weight:800; letter-spacing:.5px; background:var(--teal); color:#fff; padding:1px 7px; border-radius:20px; vertical-align:middle; }
 .m-rankhero{ display:none; }
 @media (max-width:768px){ .m-rankhero.has{ display:block; } }
@@ -1315,6 +1316,7 @@ nav.mobile-tabs {
     <div class="pm-ticker" id="pmTicker" aria-label="Live performance ticker" title="Live performance — top producers across every category">
       <div class="pm-ticker-badge"><span class="pm-ticker-dot live-dot"></span>LIVE</div>
       <div class="pm-ticker-viewport"><div class="pm-ticker-track" id="pmTickerTrack"></div></div>
+      <span class="pm-build" title="App version — confirms this device is on the latest build">v24</span>
     </div>
 
     <!-- Scrollable content -->
@@ -3193,7 +3195,7 @@ function renderMobileHome(){
         <button class="m-pill ${_mPeriod==='YTD'?'on':''}" onclick="setMobilePeriod('YTD')">Year</button>
         <select class="m-monthpick ${_mPeriod!=='YTD'?'on':''}" onchange="if(this.value)setMobilePeriod(this.value)" aria-label="Pick a month">
           <option value="" ${_mPeriod==='YTD'?'selected':''}>Month ▾</option>
-          ${monthsWithData().slice().reverse().map(mk=>`<option value="${mk}" ${_mPeriod===mk?'selected':''}>${monthName(mk)}</option>`).join('')}
+          ${calendarMonthsYTD().slice().reverse().map(mk=>`<option value="${mk}" ${_mPeriod===mk?'selected':''}>${monthName(mk)}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -6182,12 +6184,21 @@ function monthsWithData(){
   const corrected = filterData(currentData.ytdData||[], {timePeriod:'YTD_2026', loFilter:'All'});
   return [...new Set(corrected.map(l=>toDateStr(l.fundingDate).slice(0,7)).filter(m=>/^2026-\d\d$/.test(m)))].sort();
 }
+// Every calendar month from January through the CURRENT month (Pacific), regardless of data.
+// This is what drives the month pickers: July is selectable in July even before its data lands,
+// and the list auto-advances as each new month begins.
+function calendarMonthsYTD(){
+  const p = pacificDateStr(new Date()) || new Date().toISOString().slice(0,10); // YYYY-MM-DD
+  const y = p.slice(0,4), m = parseInt(p.slice(5,7),10);
+  const out=[]; for(let i=1;i<=m;i++) out.push(y+'-'+String(i).padStart(2,'0'));
+  return out; // ascending, Jan..current
+}
 function monthName(mk){ const mn=['January','February','March','April','May','June','July','August','September','October','November','December']; return mn[parseInt((mk||'').slice(5))-1]||mk; }
 // Rebuild the period dropdowns (Analytics, Ranks, Leads) from the data so month options always
 // reflect what's actually funded/led — and a new month (e.g. July) appears the moment it's uploaded.
 function refreshPeriodSelects(){
-  const funded = monthsWithData().slice().reverse(); // newest first
-  const leadMonths = Object.keys(currentData.monthlyLeads||{}).filter(m=>/^2026-\d\d$/.test(m) && (currentData.monthlyLeads[m]||[]).length).sort().reverse();
+  const funded = calendarMonthsYTD().slice().reverse(); // Jan..current, newest first
+  const leadMonths = funded;
   const cfgs = [
     {id:'anPeriod', head:[['YTD','Year to Date'],['Q1','Q1'],['Q2','Q2'],['Q3','Q3'],['Q4','Q4']], months:funded},
     {id:'lbPeriod', head:[['YTD','Year to Date'],['Q1','Q1'],['Q2','Q2'],['Q3','Q3'],['Q4','Q4']], months:funded},
