@@ -1316,7 +1316,7 @@ nav.mobile-tabs {
     <div class="pm-ticker" id="pmTicker" aria-label="Live performance ticker" title="Live performance — top producers across every category">
       <div class="pm-ticker-badge"><span class="pm-ticker-dot live-dot"></span>LIVE</div>
       <div class="pm-ticker-viewport"><div class="pm-ticker-track" id="pmTickerTrack"></div></div>
-      <span class="pm-build" title="App version — confirms this device is on the latest build">v24</span>
+      <span class="pm-build" title="App version — confirms this device is on the latest build">v27</span>
     </div>
 
     <!-- Scrollable content -->
@@ -1466,6 +1466,7 @@ nav.mobile-tabs {
                 </tbody>
               </table>
             </div>
+            <button class="btn" id="seeAllLOBtn" onclick="showAllProducers()" style="width:100%;margin-top:10px;font-size:12.5px;font-weight:700;display:none;">See All Production ›</button>
           </div>
 
           <!-- Right top: Monthly Volume Trend -->
@@ -3832,6 +3833,7 @@ function _periodLabelFromFilter(){
   if(tp==='MTD'||/MTD/.test(tp)) return 'Month to Date';
   let m=tp.match(/^Q([1-4])_2026$/); if(m) return 'Q'+m[1]+' 2026';
   m=tp.match(/^([A-Z][a-z]{2})_2026$/); if(m){ const full={Jan:'January',Feb:'February',Mar:'March',Apr:'April',May:'May',Jun:'June',Jul:'July',Aug:'August',Sep:'September',Oct:'October',Nov:'November',Dec:'December'}; return (full[m[1]]||m[1])+' 2026'; }
+  m=tp.match(/^2026-(\d\d)$/); if(m) return monthName(tp)+' 2026';
   return 'Selected Period';
 }
 function showProducerLoans(name){
@@ -3915,6 +3917,52 @@ function showProducerLoans(name){
   });
 }
 function dismissProducerLoans(){ const m=document.getElementById('producerModal'); if(m) m.remove(); }
+// Full ranked roster of every loan officer, honoring the current metric (_lbMode) and period.
+function showAllProducers(){
+  const data = Array.isArray(_lbData) ? _lbData : filterData(currentData.ytdData, currentData.filters);
+  const metric = (_lbMode === 'units') ? 'units' : 'vol';
+  const totals={};
+  data.forEach(l=>{ if(!l.loName) return; if(!totals[l.loName]) totals[l.loName]={vol:0,units:0}; totals[l.loName].vol+=l.loanAmount; totals[l.loName].units++; });
+  const sorted=Object.entries(totals).sort(([,a],[,b])=> b[metric]-a[metric] || b.vol-a.vol);
+  const period=_periodLabelFromFilter();
+  const me=(typeof getMe==='function')?getMe():null;
+  const totalVol=sorted.reduce((s,[,t])=>s+t.vol,0), totalUnits=sorted.reduce((s,[,t])=>s+t.units,0);
+  const rows=sorted.map(([name,t],i)=>{
+    const isMe=me&&name===me, rank=i+1;
+    const rankColor = rank===1?'background:var(--amber);color:#fff;':rank===2?'background:var(--warm);color:#fff;':rank===3?'background:var(--gold);color:#5A4A1F;':'background:var(--bg-warm);color:var(--text-tertiary);';
+    const rowBg=isMe?'background:rgba(0,129,141,0.10);box-shadow:inset 3px 0 0 var(--teal);':'';
+    const volEmph=metric==='vol'?'font-weight:800;':'', unitEmph=metric==='units'?'font-weight:800;':'';
+    return `<tr class="lb-drill" data-lo="${_esc(name)}" onclick="dismissAllProducers();showProducerLoans(this.dataset.lo)" title="View &amp; reassign ${_esc(name)}'s loans" style="cursor:pointer;${rowBg}">
+      <td style="padding:8px 6px 8px 8px;"><div style="width:22px;height:22px;border-radius:50%;${rankColor}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${rank}</div></td>
+      <td style="padding:8px 0;font-weight:${isMe?'800':'600'};"><div style="display:flex;align-items:center;gap:6px;">${_esc(name)}${isMe?'<span class="me-tag-inline">YOU</span>':''}<span style="opacity:0.4;font-size:11px;">›</span></div></td>
+      <td style="text-align:right;padding:8px 12px 8px 0;${unitEmph}">${t.units}</td>
+      <td style="text-align:right;padding:8px 8px 8px 0;${volEmph}">${fmtK(t.vol)}</td>
+    </tr>`;
+  }).join('');
+  const existing=document.getElementById('allProducersModal'); if(existing) existing.remove();
+  const modal=document.createElement('div');
+  modal.id='allProducersModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(15,23,33,0.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML=`
+    <div style="background:#fff;border-radius:16px;max-width:560px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.25);" onclick="event.stopPropagation()">
+      <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div>
+          <div style="font-size:17px;font-weight:800;">All Loan Officers <span style="color:var(--text-tertiary);font-weight:600;font-size:14px;">— ${sorted.length}</span></div>
+          <div style="font-size:12.5px;color:var(--text-secondary);margin-top:3px;">${period} · ranked by ${metric==='units'?'units':'volume'} · ${fmtK(totalVol)} · ${totalUnits} loans</div>
+        </div>
+        <button class="btn" onclick="dismissAllProducers()" style="padding:4px 10px;font-size:16px;line-height:1;">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:6px 12px 12px;">
+        <table class="result-table" style="font-size:12.5px;width:100%;">
+          <thead><tr><th style="width:30px;"></th><th style="text-align:left;">Loan Officer</th><th style="text-align:right;">Units</th><th style="text-align:right;padding-right:8px;">Volume</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px;">No data for this period.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+  modal.onclick=function(){ dismissAllProducers(); };
+  document.body.appendChild(modal);
+}
+function dismissAllProducers(){ const m=document.getElementById('allProducersModal'); if(m) m.remove(); }
 function unlockReassign(){
   const inp=document.getElementById('prodPinInput'); if(!inp) return;
   if(inp.value===EXECUTIVE_PIN){ window._adminUnlocked=true; showToast('Reassignment unlocked'); showProducerLoans(_producerDrawerName); }
@@ -5861,6 +5909,7 @@ function updateLeaderboard(data){
   
   const sortKey = _lbMode === 'units' ? 'units' : 'vol';
   const sorted=Object.entries(totals).sort(([,a],[,b])=>b[sortKey]-a[sortKey]).slice(0,10);
+  const _sab=$('seeAllLOBtn'); if(_sab){ const _n=Object.keys(totals).length; _sab.textContent='See All Production ›'; _sab.style.display=_n>10?'block':'none'; }
   const el=$('leaderboardTableBody');
   if(!el) return;
   
@@ -6085,9 +6134,11 @@ function computeLeadConversion(){
   const fundedNums = new Set();
   let maxFundDate = '';
   funded.forEach(l=>{
-    const id=String(l.loanId||'');
-    const m=id.match(/\b(\d{7,9})\b/); if(m) fundedNums.add(m[1]);
-    if(l.losFileName) fundedNums.add(String(l.losFileName).trim());
+    // Join key is the LOS loan number — now captured on funded loans as loanNumber (Section 3).
+    // Normalize every candidate to its 6-10 digit run so formatting differences don't break the match.
+    [l.loanNumber, l.losFileName, l.loanId].forEach(v=>{
+      const mm=String(v||'').match(/\d{6,10}/); if(mm) fundedNums.add(mm[0]);
+    });
     const fd=toDateStr(l.fundingDate); if(fd && fd>maxFundDate) maxFundDate=fd;
   });
   const all=allLeads();
@@ -6104,7 +6155,8 @@ function computeLeadConversion(){
     mature++;
     if(!byMonth[k]) byMonth[k]={total:0,conv:0};
     byMonth[k].total++;
-    if(l.losFileName && fundedNums.has(String(l.losFileName).trim())){ converted++; byMonth[k].conv++; }
+    const lk=String(l.losFileName||'').match(/\d{6,10}/);
+    if(lk && fundedNums.has(lk[0])){ converted++; byMonth[k].conv++; }
   });
   if(!mature) return {overallPct:null, converted:0, total:all.length, mature:0, newer, byMonth};
   // Zero matches across hundreds of matured leads means the funded export and the leads
