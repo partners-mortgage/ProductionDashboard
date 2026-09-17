@@ -1636,6 +1636,26 @@ nav.mobile-tabs {
             </div>
           </div>
 
+          <!-- COE Left This Month leaderboard -->
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div>
+                <div class="chart-card-title">COE Left This Month</div>
+                <div class="chart-card-subtitle" id="coeSubtitle">Scheduled closings from today through month end</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:22px;font-weight:800;color:var(--text-primary);" id="coeCount">0</div>
+                <div style="font-size:11px;color:var(--text-tertiary);" id="coeVolLabel">$0 left to close</div>
+              </div>
+            </div>
+            <div style="max-height:300px;overflow-y:auto;">
+              <table class="result-table" style="font-size:12.5px;">
+                <thead><tr><th style="width:30px;"></th><th style="text-align:left;">Loan Officer</th><th style="text-align:right;">COEs Left</th><th style="text-align:right;">Volume</th><th style="text-align:right;">Next COE</th></tr></thead>
+                <tbody id="coeTableBody"><tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);padding:20px;">Upload pipeline data to see scheduled closings</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -2423,7 +2443,8 @@ function buildPublishedFeed(){
   const loSummaryYTD = Object.values(totals).sort((a,b)=>b.vol-a.vol);
   const resolvedLeads = (typeof allLeads==='function') ? allLeads() : [];
   const pipeline = currentData.pipeline||[];
-  return { resolvedLoans, loSummaryYTD, resolvedLeads, pipeline,
+  const coeLeaderboard = (typeof coeLeftLeaderboard==='function') ? coeLeftLeaderboard(pipeline) : null;
+  return { resolvedLoans, loSummaryYTD, resolvedLeads, pipeline, coeLeaderboard,
     counts:{ loans:resolvedLoans.length, leads:resolvedLeads.length, pipeline:pipeline.length, producers:loSummaryYTD.length } };
 }
 
@@ -2461,6 +2482,7 @@ async function saveToCloud() {
         resolvedLeads: JSON.stringify(feed.resolvedLeads),
         pipeline: JSON.stringify(feed.pipeline),
         loSummaryYTD: JSON.stringify(feed.loSummaryYTD),
+        coeLeaderboard: JSON.stringify(feed.coeLeaderboard || {}),
         counts: feed.counts,
         source: 'production-dashboard',
         generatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -3689,7 +3711,7 @@ function loadHistoricalLeads(){
       const credited = resolveCredit(lead);
       if(credited === null){
         const key = (lead.clientName || lead.losFileName || '').toString().toLowerCase();
-        if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key] = {clientName:lead.clientName, loanId:lead.losFileName, loanAmount:lead.loanAmount, loName:lead.loName};
+        if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key] = {clientName:lead.clientName, loanId:lead.losFileName, loanNumber:lead.loanNumber||'', fundingDate:lead.fundingDate||lead.leadDate||'', loanAmount:lead.loanAmount, loName:lead.loName, __origName:lead.loName};
         lead.loName = 'Unassigned (needs review)';
       } else lead.loName = credited;
     }
@@ -4257,10 +4279,14 @@ function showCreditPrompt(){
     const client = l.clientName || '(no client name)';
     const amt = l.loanAmount ? fmtK(l.loanAmount) : '';
     const orig = l.__origName || 'David/Rachael';
+    const idStr = (l.loanId||'').toString().trim();
+    const loanNo = (l.loanNumber||'').toString().trim() || idStr || (l.losFileName||'').toString().trim();
+    const fd = toDateStr(l.fundingDate||l.leadDate)||'';
+    const meta = [loanNo?('Loan #'+_esc(loanNo)):'', fd, 'was '+_esc(orig)].filter(Boolean).join(' · ');
     return `<div style="display:grid;grid-template-columns:1fr 200px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);">
       <div>
         <div style="font-weight:600;font-size:13.5px;">${client} <span style="color:var(--text-tertiary);font-weight:500;">${amt}</span></div>
-        <div style="font-size:11.5px;color:var(--text-tertiary);">Originally credited to a non-producer — assign the real LO</div>
+        <div style="font-size:11.5px;color:var(--text-secondary);">${meta}</div>
       </div>
       <select class="credit-pick" data-key="${key.replace(/"/g,'&quot;')}" style="padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;">
         <option value="">— choose LO —</option>
@@ -4684,7 +4710,7 @@ function processLeadData(json){
         const credited = resolveCredit(l);
         if(credited===null){
           const key=(l.clientName||l.losFileName||'').toString().toLowerCase();
-          if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key]={clientName:l.clientName,loanId:l.losFileName,loanAmount:l.loanAmount,loName:l.loName};
+          if(key && !PENDING_CREDIT[key]) PENDING_CREDIT[key]={clientName:l.clientName,loanId:l.losFileName,loanNumber:l.loanNumber||'',fundingDate:l.fundingDate||'',loanAmount:l.loanAmount,loName:l.loName,__origName:l.loName};
           if(typeof scheduleCreditPrompt==='function') scheduleCreditPrompt();
           l.loName='Unassigned (needs review)';
         } else l.loName=credited;
@@ -5556,6 +5582,54 @@ async function forceRefreshPipeline(){
   showToast('Pipeline cleared — upload the current Boyd file now');
 }
 
+// ── COE left this month ──
+// Pipeline loans (not yet funded) whose Close of Escrow date falls between today and
+// month end. Grouped per LO — "what's still scheduled to close this month".
+function coeLeftLeaderboard(pl){
+  const todayStr = pacificDateStr(new Date());
+  const y = parseInt(todayStr.slice(0,4),10), m = parseInt(todayStr.slice(5,7),10);
+  const lastDay = new Date(y, m, 0).getDate();
+  const monthEndStr = `${y}-${String(m).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+  const monthStartStr = `${y}-${String(m).padStart(2,'0')}-01`;
+  const t = {};
+  let monthTotalUnits = 0, monthTotalVol = 0;
+  (pl||[]).forEach(l=>{
+    const coe = toDateStr(l.coeDate); if(!coe) return;
+    if(coe < monthStartStr || coe > monthEndStr) return; // this month only
+    monthTotalUnits++; monthTotalVol += (l.loanAmount||0);
+    if(coe < todayStr) return; // already past — not "left"
+    const name = l.loName || 'Unassigned';
+    if(/unassigned/i.test(name)) return;
+    if(!t[name]) t[name]={name, units:0, vol:0, nextCoe:coe};
+    t[name].units++; t[name].vol += (l.loanAmount||0);
+    if(coe < t[name].nextCoe) t[name].nextCoe = coe;
+  });
+  const rows = Object.values(t).sort((a,b)=> b.units-a.units || b.vol-a.vol);
+  return { rows, monthLabel: new Date(y, m-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),
+    leftUnits: rows.reduce((s,r)=>s+r.units,0), leftVol: rows.reduce((s,r)=>s+r.vol,0),
+    monthTotalUnits, monthTotalVol, asOf: todayStr };
+}
+function updateCoeLeaderboard(pl){
+  const d = coeLeftLeaderboard(pl);
+  if($('coeCount')) $('coeCount').textContent = d.leftUnits;
+  if($('coeVolLabel')) $('coeVolLabel').textContent = `${fmtK(d.leftVol)} left to close`;
+  if($('coeSubtitle')) $('coeSubtitle').textContent = `${d.monthLabel} · ${d.monthTotalUnits} COEs on the month, ${d.leftUnits} still ahead`;
+  const body = $('coeTableBody'); if(!body) return;
+  if(!d.rows.length){
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-tertiary);padding:20px;">No COEs remaining this month</td></tr>';
+    return;
+  }
+  body.innerHTML = d.rows.map((r,i)=>{
+    const rc=i===0?'background:var(--amber);color:#fff;':i===1?'background:var(--warm);color:#fff;':i===2?'background:var(--gold);color:#5A4A1F;':'background:var(--bg-warm);color:var(--text-tertiary);';
+    return `<tr class="lb-drill" data-lo="${_esc(r.name)}" onclick="showProducerLoans(this.dataset.lo)" title="View ${_esc(r.name)}'s loans" style="cursor:pointer;">
+      <td style="padding:8px 6px 8px 8px;"><div style="width:22px;height:22px;border-radius:50%;${rc}font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;">${i+1}</div></td>
+      <td style="padding:8px 0;font-weight:600;">${_esc(r.name)}</td>
+      <td style="text-align:right;padding:8px 12px 8px 0;font-weight:800;">${r.units}</td>
+      <td style="text-align:right;padding:8px 4px 8px 0;">${fmtK(r.vol)}</td>
+      <td style="text-align:right;padding:8px 8px 8px 0;color:var(--text-secondary);font-size:11.5px;">${_esc(r.nextCoe.slice(5))}</td>
+    </tr>`;
+  }).join('');
+}
 function updatePipelineKPIs(pl){
   const vol=pl.reduce((s,l)=>s+l.loanAmount,0);
   const ctc=pl.filter(l=>l.status==='Clear To Close'||l.clearToClose).length;
@@ -5575,6 +5649,7 @@ function updatePipelineKPIs(pl){
 
   // Render pipeline charts
   updatePipelineCharts(pl);
+  updateCoeLeaderboard(pl);
 }
 
 // ── Pipeline chart colors (matches daily report palette) ──
