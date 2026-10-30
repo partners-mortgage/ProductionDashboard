@@ -4332,12 +4332,16 @@ async function saveProducerReassignments(){
     if(currentData.deletedLoans && currentData.deletedLoans[key]) return;
     const leifkey=sel.getAttribute('data-leifkey')||'';
     const val=(sel.value||'').trim();
-    const cur=(currentData.loanReassignments&&currentData.loanReassignments[key])||'';
+    // Resolve the full loan so we can write under every candidate key
+    const srcAll = _searchCorpus();
+    const loan = srcAll.find(l=>reassignKeys(l).indexOf(key)!==-1) || null;
+    const allKeys = loan ? reassignKeys(loan) : [key];
+    const cur = lookupReassignment(loan||{}) || (currentData.loanReassignments[key]||'');
     if(!val || val==='__custom__' || val===_producerDrawerName){
-      if(cur){ delete currentData.loanReassignments[key]; changed++; }
+      if(cur){ allKeys.forEach(k=>{ delete currentData.loanReassignments[k]; }); changed++; }
       if(leifkey && currentData.leifDecisions && currentData.leifDecisions[leifkey]) delete currentData.leifDecisions[leifkey];
     } else {
-      if(cur!==val){ currentData.loanReassignments[key]=val; changed++; }
+      if(cur!==val){ allKeys.forEach(k=>{ currentData.loanReassignments[k]=val; }); changed++; }
       if(leifkey){ currentData.leifDecisions[leifkey]='leif'; }
     }
   });
@@ -4676,6 +4680,8 @@ const LEIF_PENDING = {};
 // Only applies to loans whose Owner is Leif AND that have a real Referred By.
 function applyLeifRule(l){
   if(!isLeif(l.owner)) return l.loName; // not a Leif-owned loan
+  // A manual assignment is final — never re-queue this loan for confirmation
+  if(typeof lookupReassignment==='function'){ const mine=lookupReassignment(l); if(mine) return mine; }
   const ref = (l.referredBy||'').toString().trim();
   if(!ref) return 'Leif Potter'; // his own production, no referrer
   const key = leifLoanKey(l);
@@ -5400,6 +5406,36 @@ function reassignKey(l){
   if(c) return 'loan:'+c+':'+(l.loanAmount||0);
   return '';
 }
+// ── Every key this loan could be filed under ──
+// A re-upload can change a loan's id, file name, or funded amount. A manual assignment is
+// written under ALL of these and looked up against ALL of them, so an export quirk can
+// never orphan an override and silently revert the loan to its old owner.
+function reassignKeys(l){
+  if(!l) return [];
+  const keys = [];
+  const push = k => { if(k && keys.indexOf(k)===-1) keys.push(k); };
+  const id   = (l.loanId||'').toString().trim().toLowerCase();
+  const file = (l.losFileName||'').toString().trim().toLowerCase();
+  const num  = (l.loanNumber||'').toString().trim().toLowerCase();
+  const c    = (l.clientName||'').toString().trim().toLowerCase();
+  const amt  = Math.round((l.loanAmount||0)/1000); // $1K tolerance for revised amounts
+  const mon  = (toDateStr(l.fundingDate)||'').slice(0,7);
+  push(id   && 'loan:'+id);
+  push(file && 'loan:'+file);
+  push(num  && 'loan:'+num);
+  push(c    && 'loan:'+c+':'+(l.loanAmount||0)); // legacy exact-amount key
+  push(c    && 'loanc:'+c+':'+amt);
+  push(c && mon && 'loanm:'+c+':'+mon);
+  push(c    && 'loann:'+c);
+  return keys;
+}
+// First saved assignment found under any of this loan's keys
+function lookupReassignment(l){
+  const re = currentData.loanReassignments; if(!re) return '';
+  const keys = reassignKeys(l);
+  for(let i=0;i<keys.length;i++){ if(re[keys[i]]) return re[keys[i]]; }
+  return '';
+}
 
 function filterData(data, filters){
   const hasMonthly = Object.keys(currentData.monthlyProduction).length > 0;
@@ -5463,8 +5499,10 @@ function filterData(data, filters){
       const ref = (cur.referredBy||'').toString().trim();
       if(ref && !isNonProducer(ref) && cur.loName !== ref) cur = {...cur, loName: ref};
     }
-    // David Arvidson / Rachael Gaines are never the producer — resolve to the real LO
-    if(isNonProducer(cur.loName)){
+    // David Arvidson / Rachael Gaines are never the producer — resolve to the real LO.
+    // Skipped entirely when this loan already carries a manual assignment, so an assigned
+    // loan never reappears in the "Assign Loan Credit" prompt after a re-upload.
+    if(isNonProducer(cur.loName) && !lookupReassignment(cur)){
       const credited = resolveCredit(cur);
       if(credited === null){
         unresolved.push(cur);
@@ -5473,12 +5511,10 @@ function filterData(data, filters){
         cur = {...cur, loName: credited};
       }
     }
-    // Manual per-loan reassignment (admin drill-down) always wins over the auto-rules above
-    const rk = reassignKey(cur);
-    if(rk && currentData.loanReassignments && currentData.loanReassignments[rk]){
-      const tgt = currentData.loanReassignments[rk];
-      if(tgt && tgt !== cur.loName) cur = {...cur, loName: tgt};
-    }
+    // Manual per-loan reassignment (admin drill-down) always wins over the auto-rules above.
+    // Checked against every candidate key so it survives id/amount changes on re-upload.
+    const tgt = lookupReassignment(cur);
+    if(tgt && tgt !== cur.loName) cur = {...cur, loName: tgt};
     return cur;
   });
   // Surface any loans needing manual assignment (deduped by client)
